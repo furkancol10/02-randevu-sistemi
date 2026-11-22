@@ -44,6 +44,16 @@ test('360px: hizmet → fark etmez → slot → ad/telefon → onay + .ics', asy
 	const body = await ics.text();
 	expect(body).toContain('BEGIN:VEVENT');
 	expect(body).toContain('TRIGGER:-PT2H');
+	// .ics paylaşılabilir: gizli manage_token UID'ye sızmamalı
+	const token = page.url().split('/onay/')[1];
+	expect(token).toMatch(/^[0-9a-f-]{36}$/);
+	expect(body).not.toContain(token);
+	expect(body).toMatch(/UID:appt-\d+-\d+@randevu-sistemi/);
+
+	// Bozuk token 500 değil 404 verir (sayfa ve .ics)
+	const bad = '-'.repeat(36);
+	expect((await request.get(`/demo-kuafor/onay/${bad}`)).status()).toBe(404);
+	expect((await request.get(`/demo-kuafor/onay/${bad}/randevu.ics`)).status()).toBe(404);
 });
 
 test('aynı slotu iki müşteri: ikincisi "az önce doldu" görür ve başka saat seçebilir', async ({

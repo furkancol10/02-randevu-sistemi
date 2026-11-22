@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { getAppointmentByToken, getBusinessBySlug } from '#lib/server/booking/catalog.ts';
 import { db } from '#lib/server/db/index.ts';
+import { statusView } from '#lib/status.ts';
 import { formatDayLong, formatTime, formatPrice, localDate } from '#lib/time.ts';
 import type { PageServerLoad } from './$types';
 
@@ -28,6 +29,7 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
 			day,
 			time,
 			status: a.status,
+			view: statusView(a.status, a.customerName),
 			customerName: a.customerName
 		},
 		whatsappUrl: business.phone

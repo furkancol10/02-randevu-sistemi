@@ -7,6 +7,8 @@ export type IcsEvent = {
 	description?: string;
 	/** Hatırlatma: etkinlikten kaç dakika önce (varsayılan 120 = 2 saat) */
 	alarmMinutes?: number;
+	/** Randevu durumu → STATUS (cancelled/pending/confirmed) */
+	status?: 'pending' | 'confirmed' | 'cancelled' | string;
 	/** DTSTAMP için (testte sabitlenir) */
 	now?: Date;
 };
@@ -17,7 +19,18 @@ const utc = (d: Date) =>
 		.replace(/[-:]/g, '')
 		.replace(/\.\d{3}/, '');
 
-const escapeText = (s: string) => s.replace(/[\\;,]/g, (c) => '\\' + c).replace(/\r?\n/g, '\\n');
+const escapeText = (s: string) =>
+	s.replace(/[\\;,]/g, (c) => '\\' + c).replace(/\r\n|\r|\n/g, '\\n');
+
+/** UID: gizli manage_token'dan bağımsız, tahmin edilse de yetki vermeyen kimlik. */
+export const appointmentUid = (businessId: number, appointmentId: number) =>
+	`appt-${businessId}-${appointmentId}@randevu-sistemi`;
+
+const STATUS: Record<string, string> = {
+	cancelled: 'CANCELLED',
+	pending: 'TENTATIVE',
+	confirmed: 'CONFIRMED'
+};
 
 /** RFC 5545: satırlar en çok 75 oktet; devam satırı boşlukla başlar. Çok baytlı karakter bölünmez. */
 function fold(line: string): string {
@@ -50,15 +63,17 @@ export function buildIcs(e: IcsEvent): string {
 		'CALSCALE:GREGORIAN',
 		'METHOD:PUBLISH',
 		'BEGIN:VEVENT',
-		`UID:${e.uid}`,
+		`UID:${e.uid.replace(/[\x00-\x1f\x7f]/g, '')}`,
 		`DTSTAMP:${utc(e.now ?? new Date())}`,
 		`DTSTART:${utc(e.start)}`,
 		`DTEND:${utc(e.end)}`,
 		`SUMMARY:${escapeText(e.summary)}`
 	];
+	if (e.status && STATUS[e.status]) lines.push(`STATUS:${STATUS[e.status]}`);
 	if (e.location) lines.push(`LOCATION:${escapeText(e.location)}`);
 	if (e.description) lines.push(`DESCRIPTION:${escapeText(e.description)}`);
-	const minutes = e.alarmMinutes ?? 120;
+	const am = e.alarmMinutes ?? 120;
+	const minutes = Number.isInteger(am) && am >= 0 ? am : 120;
 	const trigger = minutes % 60 === 0 ? `-PT${minutes / 60}H` : `-PT${minutes}M`;
 	lines.push(
 		'BEGIN:VALARM',

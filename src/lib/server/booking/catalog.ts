@@ -30,9 +30,11 @@ export async function getActiveResourcesFor(db: Db, businessId: number, serviceI
 		.orderBy(asc(resources.sort), asc(resources.id));
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Onay sayfası: manage_token + işletme eşleşmesi. */
 export async function getAppointmentByToken(db: Db, businessId: number, token: string) {
-	if (!/^[0-9a-f-]{36}$/i.test(token)) return null;
+	if (!UUID_RE.test(token)) return null;
 	const [row] = await db
 		.select({
 			id: appointments.id,

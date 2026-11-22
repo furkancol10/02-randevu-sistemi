@@ -3,6 +3,11 @@
 
 	let { data }: PageProps = $props();
 	const a = $derived(data.appointment);
+	const tones = {
+		ok: 'border-emerald-300 bg-emerald-50 text-emerald-900',
+		wait: 'border-amber-300 bg-amber-50 text-amber-900',
+		danger: 'border-red-300 bg-red-50 text-red-900'
+	};
 </script>
 
 <svelte:head>
@@ -12,15 +17,9 @@
 
 <div class="min-h-dvh bg-slate-50 text-slate-900">
 	<main class="mx-auto max-w-md space-y-4 px-4 py-6">
-		<div class="rounded-xl border border-emerald-300 bg-emerald-50 p-4">
-			<h1 class="text-xl font-bold text-emerald-900">
-				{a.status === 'pending' ? 'Randevu talebiniz alındı' : 'Randevunuz onaylandı'}
-			</h1>
-			<p class="text-sm text-emerald-900">
-				{a.status === 'pending'
-					? 'Salon onayladığında size haber verilecek.'
-					: `Görüşmek üzere, ${a.customerName}.`}
-			</p>
+		<div class="rounded-xl border p-4 {tones[a.view.tone]}">
+			<h1 class="text-xl font-bold">{a.view.title}</h1>
+			<p class="text-sm">{a.view.text}</p>
 		</div>
 
 		<dl class="space-y-2 rounded-xl border border-slate-200 bg-white p-4 text-sm">

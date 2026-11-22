@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { getAppointmentByToken, getBusinessBySlug } from '#lib/server/booking/catalog.ts';
 import { db } from '#lib/server/db/index.ts';
-import { buildIcs } from '#lib/ics.ts';
+import { appointmentUid, buildIcs } from '#lib/ics.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params }) => {
@@ -11,7 +11,8 @@ export const GET: RequestHandler = async ({ params }) => {
 	if (!a) error(404, 'Randevu bulunamadı');
 
 	const ics = buildIcs({
-		uid: `${params.token}@randevu-sistemi`,
+		uid: appointmentUid(business.id, a.id),
+		status: a.status,
 		start: a.period.start,
 		end: new Date(a.period.start.getTime() + a.durationMin * 60_000),
 		summary: `${a.serviceName} - ${business.name}`,

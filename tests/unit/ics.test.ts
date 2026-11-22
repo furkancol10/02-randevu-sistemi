@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildIcs } from '../../src/lib/ics';
+import { appointmentUid, buildIcs } from '../../src/lib/ics';
 
 const event = {
 	uid: 'abc-123@randevu',
@@ -60,5 +60,35 @@ describe('buildIcs', () => {
 
 	it('alarm dakikası ayarlanabilir', () => {
 		expect(buildIcs({ ...event, alarmMinutes: 30 })).toContain('TRIGGER:-PT30M');
+	});
+});
+
+describe('buildIcs: girdi güvenliği', () => {
+	const lines = (e: Parameters<typeof buildIcs>[0]) => buildIcs(e).split('\r\n');
+
+	it('uid içindeki satır sonları özellik enjekte edemez', () => {
+		const out = lines({ ...event, uid: 'x\r\nSTATUS:CANCELLED' });
+		expect(out).not.toContain('STATUS:CANCELLED');
+	});
+
+	it('çıplak CR kaçırılır', () => {
+		expect(buildIcs({ ...event, summary: 'A\rB' })).not.toMatch(/\r(?!\n)/);
+	});
+
+	it.each([-30, 1.5, Number.NaN])('geçersiz alarmMinutes=%s TRIGGER bozmaz', (m) => {
+		const trig = lines({ ...event, alarmMinutes: m }).find((l) => l.startsWith('TRIGGER:'));
+		expect(trig).toMatch(/^TRIGGER:-PT\d+[HM]$/);
+	});
+
+	it('status: iptal → STATUS:CANCELLED, bekleyen → TENTATIVE', () => {
+		expect(lines({ ...event, status: 'cancelled' })).toContain('STATUS:CANCELLED');
+		expect(lines({ ...event, status: 'pending' })).toContain('STATUS:TENTATIVE');
+		expect(lines({ ...event, status: 'confirmed' })).toContain('STATUS:CONFIRMED');
+	});
+});
+
+describe('appointmentUid', () => {
+	it('gizli token içermez; id ve işletmeden türer', () => {
+		expect(appointmentUid(3, 42)).toBe('appt-3-42@randevu-sistemi');
 	});
 });
