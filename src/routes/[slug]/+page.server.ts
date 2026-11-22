@@ -7,12 +7,14 @@ import {
 	getBusinessBySlug
 } from '#lib/server/booking/catalog.ts';
 import { db } from '#lib/server/db/index.ts';
+import { bookingLimiter } from '#lib/server/limiters.ts';
 import { addDays, formatDayLong, formatWeekdayShort, localDate, slotOption } from '#lib/time.ts';
 import { bookingSchema, formStrings } from '#lib/validation.ts';
 import { getVertical } from '#lib/verticals/index.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 const STRIP_DAYS = 14;
+const noErrors: Record<string, string> = {};
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	const business = await getBusinessBySlug(db, params.slug);
@@ -109,9 +111,17 @@ export const load: PageServerLoad = async ({ params, url }) => {
 };
 
 export const actions: Actions = {
-	book: async ({ request, params }) => {
+	book: async ({ request, params, getClientAddress }) => {
 		const form = formStrings(await request.formData());
 		const values = { ad: form.ad ?? '', telefon: form.telefon ?? '' };
+		// IP hız sınırı (bellek içi, bkz. rate-limit.ts); geçersiz denemeler de sayılır
+		if (!bookingLimiter.consume(getClientAddress())) {
+			return fail(429, {
+				errors: noErrors,
+				values,
+				message: 'Çok fazla deneme yaptınız. Lütfen birkaç dakika sonra tekrar deneyin.'
+			});
+		}
 		const parsed = bookingSchema.safeParse(form);
 		if (!parsed.success) {
 			const errors: Record<string, string> = {};
@@ -136,7 +146,6 @@ export const actions: Actions = {
 			result.reason === 'conflict'
 				? 'Bu saat az önce doldu. Lütfen başka bir saat seçin.'
 				: 'Bu saat artık uygun değil. Lütfen başka bir saat seçin.';
-		const noErrors: Record<string, string> = {};
 		return fail(409, { errors: noErrors, values, message });
 	}
 };

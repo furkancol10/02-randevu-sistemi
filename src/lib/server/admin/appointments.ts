@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../db/client';
-import { appointments, resources, services } from '../db/schema';
+import { appointments, resources, services, timeOff } from '../db/schema';
 
 export type Range = { from: Date; to: Date; resourceId?: number };
 
@@ -74,4 +74,26 @@ export async function setAppointmentStatus(
 	if (updated.length > 0) return { ok: true };
 	const exists = await getAppointment(db, businessId, id);
 	return { ok: false, reason: exists ? 'invalid_state' : 'not_found' };
+}
+
+/** Aralıkla kesişen izinler (takvimde gösterim için); işletmeye kapsamlı. */
+export async function listTimeOffInRange(db: Db, businessId: number, r: Range) {
+	return db
+		.select({
+			id: timeOff.id,
+			resourceId: timeOff.resourceId,
+			resourceName: resources.name,
+			period: timeOff.period,
+			reason: timeOff.reason
+		})
+		.from(timeOff)
+		.innerJoin(resources, eq(resources.id, timeOff.resourceId))
+		.where(
+			and(
+				eq(resources.businessId, businessId),
+				r.resourceId === undefined ? undefined : eq(timeOff.resourceId, r.resourceId),
+				sql`${timeOff.period} && tstzrange(${r.from.toISOString()}::timestamptz, ${r.to.toISOString()}::timestamptz, '[)')`
+			)
+		)
+		.orderBy(sql`lower(${timeOff.period})`);
 }

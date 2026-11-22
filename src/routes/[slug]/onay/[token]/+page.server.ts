@@ -35,6 +35,7 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
 		whatsappUrl: business.phone
 			? `https://wa.me/${business.phone}?text=${encodeURIComponent(whatsappText)}`
 			: null,
+		token: params.token,
 		icsUrl: `/${params.slug}/onay/${params.token}/randevu.ics`
 	};
 };

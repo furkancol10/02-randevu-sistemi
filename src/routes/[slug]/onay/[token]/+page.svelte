@@ -74,6 +74,12 @@
 				</a>
 			{/if}
 		</div>
+		<a
+			href="/r/{data.token}"
+			class="flex min-h-12 items-center justify-center rounded-xl border border-slate-300 px-4 font-semibold"
+		>
+			Randevuyu görüntüle / iptal et
+		</a>
 		<p class="text-xs text-slate-500">
 			Bu sayfanın bağlantısını saklayın; randevunuza buradan ulaşırsınız.
 		</p>
