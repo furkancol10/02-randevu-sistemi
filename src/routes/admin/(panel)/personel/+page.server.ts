@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { fieldErrors, resourceSchema } from '#lib/admin-validation.ts';
+import { fieldErrors, parseIdList, resourceSchema } from '#lib/admin-validation.ts';
 import { createResource, listResources, listServices } from '#lib/server/admin/catalog.ts';
 import { requireAdmin } from '#lib/server/auth/guard.ts';
 import { db } from '#lib/server/db/index.ts';
@@ -33,10 +33,7 @@ export const actions: Actions = {
 		const parsed = resourceSchema.safeParse(formStrings(fd));
 		if (!parsed.success) return fail(400, { message: Object.values(fieldErrors(parsed.error))[0] });
 		const [business] = await db.select().from(businesses).where(eq(businesses.id, businessId));
-		const serviceIds = fd
-			.getAll('hizmet')
-			.map((v) => Number(v))
-			.filter((n) => Number.isInteger(n) && n > 0);
+		const serviceIds = parseIdList(fd.getAll('hizmet').map(String));
 		const r = await createResource(db, businessId, {
 			name: parsed.data.ad,
 			kind: getVertical(business.vertical).resourceKind,

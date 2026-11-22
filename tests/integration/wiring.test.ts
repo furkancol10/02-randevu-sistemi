@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { appointments } from '../../src/lib/server/db/schema';
+import { appointments, businesses } from '../../src/lib/server/db/schema';
 import { createAdmin } from '../../src/lib/server/auth/password';
 import { SESSION_COOKIE, SESSION_TTL_MS, createSession } from '../../src/lib/server/auth/session';
 import { book } from '../../src/lib/server/booking/book';
@@ -14,6 +14,9 @@ const login = await import('../../src/routes/admin/giris/+page.server');
 const bookingPage = await import('../../src/routes/[slug]/+page.server');
 const detail = await import('../../src/routes/admin/(panel)/randevu/[id]/+page.server');
 const manage = await import('../../src/routes/r/[token]/+page.server');
+const onay = await import('../../src/routes/[slug]/onay/[token]/+page.server');
+const takvim = await import('../../src/routes/admin/(panel)/takvim/+page.server');
+const personel = await import('../../src/routes/admin/(panel)/personel/+page.server');
 
 beforeEach(async () => {
 	await resetData();
@@ -351,11 +354,48 @@ describe('/r/[token] iptal eylemi', () => {
 	const status = async (id: number) =>
 		(await db.select().from(appointments).where(eq(appointments.id, id)))[0].status;
 
+	it('işletme telefonu varsa WhatsApp bağlantısı yalnız rakamlı wa.me adresi; yoksa null (/r ve onay sayfası)', async () => {
+		const appt = await booked();
+		const [b] = await db.select().from(businesses);
+		const load = async (m: typeof manage | typeof onay) =>
+			(await call(m.load, {
+				params: { token: appt.manageToken, slug: b.slug },
+				setHeaders: () => {}
+			})) as { whatsappUrl: string | null };
+		expect((await load(manage)).whatsappUrl).toBeNull();
+		await db.update(businesses).set({ phone: '905551234567' });
+		for (const m of [manage, onay])
+			expect((await load(m)).whatsappUrl).toMatch(/^https:\/\/wa\.me\/905551234567\?text=/);
+	});
+
 	it('bozuk token → 404', async () => {
 		await expect(
 			call(manage.load, { params: { token: 'bozuk' }, setHeaders: () => {} })
 		).rejects.toMatchObject({
 			status: 404
 		});
+	});
+});
+
+describe('admin girdi sınırları: 500 yerine düzgün yanıt (Neon #9 + notlar)', () => {
+	const asAdmin = (businessId: number) => ({ adminId: 1, businessId, email: 'x@y.test' });
+
+	it('takvim ?gun=9999-12-31 hata vermez, bugüne düşer', async () => {
+		const { business } = await createFixture(1);
+		const r = (await call(takvim.load, {
+			locals: { admin: asAdmin(business.id) },
+			url: new URL('http://x.test/admin/takvim?gun=9999-12-31')
+		})) as { date: string };
+		expect(r.date).toMatch(/^20\d\d-\d\d-\d\d$/);
+	});
+
+	it('personel ekle: hizmet=2147483648 (int4 üstü) 500 üretmez; kayıt oluşur, hizmet atanmaz', async () => {
+		const { business } = await createFixture(1);
+		await expect(
+			call(personel.actions.ekle, {
+				locals: { admin: asAdmin(business.id) },
+				request: form({ ad: 'Yeni Personel', hizmet: '2147483648' })
+			})
+		).rejects.toMatchObject({ status: 303 });
 	});
 });

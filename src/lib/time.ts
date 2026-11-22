@@ -7,11 +7,12 @@ export function zonedToUtc(date: string, time: string, timezone: string): Date {
 	return new Date(new TZDate(y, mo - 1, d, h, mi, 0, timezone).getTime());
 }
 
-/** "YYYY-MM-DD" gerçek bir takvim günü mü? (2026-11-31 → false; sessizce kaymaz) */
+/** "YYYY-MM-DD" gerçek bir takvim günü mü? (2026-11-31 → false; sessizce kaymaz) ve makul yıl aralığında mı (2000-2100; uçlarda Date/Postgres taşar). */
 export function isValidDate(date: string): boolean {
 	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
 	if (!m) return false;
 	const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+	if (y < 2000 || y > 2100) return false;
 	const t = new Date(Date.UTC(y, mo - 1, d));
 	return t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === d;
 }

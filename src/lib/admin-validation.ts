@@ -20,8 +20,22 @@ export function fieldErrors(error: z.ZodError): Record<string, string> {
 	return out;
 }
 
+/** Form sayısı: boş/boşluk "0" sayılmaz (z.coerce.number('') === 0). */
 const int = (min: number, max: number, msg: string) =>
-	z.coerce.number(msg).int(msg).min(min, msg).max(max, msg);
+	z
+		.string(msg)
+		.trim()
+		.min(1, msg)
+		.transform(Number)
+		.pipe(z.number(msg).int(msg).min(min, msg).max(max, msg));
+
+const INT4_MAX = 2_147_483_647;
+/** Form id listesi (ör. `hizmet` onay kutuları): yalnız 1..int4 max tam sayılar; gerisi atılır (Postgres 22003 → 500 olmasın). */
+export function parseIdList(values: string[]): number[] {
+	return values
+		.map((v) => (/^\d{1,10}$/.test(v.trim()) ? Number(v) : 0))
+		.filter((n) => n > 0 && n <= INT4_MAX);
+}
 const name = (label: string) =>
 	z
 		.string()
@@ -63,7 +77,7 @@ export const hoursSchema = z.object({
 
 const localDateTime = z
 	.string()
-	.regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Tarih ve saat girin')
+	.regex(/^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/, 'Tarih ve saat girin')
 	.refine((v) => isValidDate(v.slice(0, 10)), 'Geçersiz tarih');
 
 export const timeOffSchema = z.object({

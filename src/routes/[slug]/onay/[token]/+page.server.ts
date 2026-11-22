@@ -3,6 +3,7 @@ import { getAppointmentByToken, getBusinessBySlug } from '#lib/server/booking/ca
 import { db } from '#lib/server/db/index.ts';
 import { statusView } from '#lib/status.ts';
 import { formatDayLong, formatTime, formatPrice, localDate } from '#lib/time.ts';
+import { waLink } from '#lib/whatsapp.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, setHeaders }) => {

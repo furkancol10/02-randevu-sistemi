@@ -1,6 +1,12 @@
 import { eq } from 'drizzle-orm';
 import { error, fail } from '@sveltejs/kit';
-import { fieldErrors, hoursSchema, resourceSchema, timeOffSchema } from '#lib/admin-validation.ts';
+import {
+	fieldErrors,
+	hoursSchema,
+	parseIdList,
+	resourceSchema,
+	timeOffSchema
+} from '#lib/admin-validation.ts';
 import {
 	addTimeOff,
 	addWorkingHours,
@@ -51,10 +57,7 @@ export const actions: Actions = {
 		const r = await updateResource(db, businessId, parseId(params.id), {
 			name: parsed.data.ad,
 			active: parsed.data.aktif === 'on',
-			serviceIds: fd
-				.getAll('hizmet')
-				.map(Number)
-				.filter((n) => Number.isInteger(n) && n > 0)
+			serviceIds: parseIdList(fd.getAll('hizmet').map(String))
 		});
 		return r.ok
 			? { success: 'Personel güncellendi.' }
