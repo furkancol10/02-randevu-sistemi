@@ -29,6 +29,10 @@ const MIN = 60_000;
 export function computeSlots(input: SlotInput): Date[] {
 	const { date, timezone, durationMin, bufferMin, stepMin, busy, now } = input;
 	const slots: Date[] = [];
+	// Bozuk kayıt (adım<=0 sonsuz döngü; negatif buffer boş aralık) → slot üretme
+	if (!(Number.isInteger(stepMin) && stepMin > 0)) return slots;
+	if (!(Number.isFinite(durationMin) && durationMin > 0)) return slots;
+	if (!(Number.isFinite(bufferMin) && bufferMin >= 0)) return slots;
 	for (const range of input.workRanges) {
 		const rangeStart = zonedToUtc(date, range.start, timezone).getTime();
 		const rangeEnd = zonedToUtc(date, range.end, timezone).getTime();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeSlots } from '../../src/lib/server/booking/slots';
-import { formatTime, weekdayOf, zonedToUtc } from '../../src/lib/time';
+import { formatTime, isValidDate, slotOption, weekdayOf, zonedToUtc } from '../../src/lib/time';
 
 describe('saat dilimi (kabul testi #3)', () => {
 	it('test süreci UTC sunucuyu taklit eder', () => {
@@ -43,5 +43,37 @@ describe('saat dilimi (kabul testi #3)', () => {
 	it('weekdayOf: 2026-11-23 Pazartesi (1), 2026-11-22 Pazar (0)', () => {
 		expect(weekdayOf('2026-11-23')).toBe(1);
 		expect(weekdayOf('2026-11-22')).toBe(0);
+	});
+});
+
+describe('slotOption / geçerli gün', () => {
+	it('DST geri alımında aynı yerel saat iki ayrı UTC değeri olur', () => {
+		const slots = computeSlots({
+			date: '2026-10-25',
+			timezone: 'Europe/Berlin',
+			workRanges: [{ start: '00:00', end: '05:00' }],
+			durationMin: 60,
+			bufferMin: 0,
+			stepMin: 60,
+			busy: [],
+			now: new Date('2026-10-01T00:00:00Z')
+		});
+		const opts = slots.map((d) => slotOption(d, 'Europe/Berlin'));
+		const labels = opts.map((o) => o.label);
+		expect(labels.filter((l) => l === '02:00')).toHaveLength(2);
+		expect(new Set(opts.map((o) => o.value)).size).toBe(opts.length);
+		expect(opts[0].value).toBe('2026-10-24T22:00:00Z');
+	});
+
+	it.each([
+		['2026-11-23', true],
+		['2028-02-29', true],
+		['2026-02-29', false],
+		['2026-11-31', false],
+		['2026-13-01', false],
+		['2026-00-10', false],
+		['abc', false]
+	])('isValidDate(%s)=%s', (d, ok) => {
+		expect(isValidDate(d)).toBe(ok);
 	});
 });

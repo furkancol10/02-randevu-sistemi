@@ -7,15 +7,8 @@ import {
 	getBusinessBySlug
 } from '#lib/server/booking/catalog.ts';
 import { db } from '#lib/server/db/index.ts';
-import {
-	addDays,
-	formatDayLong,
-	formatTime,
-	formatWeekdayShort,
-	localDate,
-	zonedToUtc
-} from '#lib/time.ts';
-import { bookingSchema } from '#lib/validation.ts';
+import { addDays, formatDayLong, formatWeekdayShort, localDate, slotOption } from '#lib/time.ts';
+import { bookingSchema, formStrings } from '#lib/validation.ts';
 import { getVertical } from '#lib/verticals/index.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -72,11 +65,11 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const dates = Array.from({ length: dayCount }, (_, i) => addDays(today, i));
 	const slotsFor = async (date: string) =>
 		(await availableSlots(db, { business, service, date, now }, resourceId)).map((d) =>
-			formatTime(d, tz)
+			slotOption(d, tz)
 		);
 
 	let gun = url.searchParams.get('gun');
-	let slots: string[] = [];
+	let slots: { value: string; label: string }[] = [];
 	if (gun && dates.includes(gun)) {
 		slots = await slotsFor(gun);
 	} else {
@@ -108,15 +101,16 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	};
 
 	const saat = url.searchParams.get('saat');
-	if (gun && saat && slots.includes(saat)) {
-		return { step: 'details' as const, ...base, saat };
+	const chosen = slots.find((o) => o.value === saat);
+	if (gun && chosen) {
+		return { step: 'details' as const, ...base, saat: chosen.value, saatLabel: chosen.label };
 	}
 	return { step: 'time' as const, ...base };
 };
 
 export const actions: Actions = {
 	book: async ({ request, params }) => {
-		const form = Object.fromEntries(await request.formData()) as Record<string, string>;
+		const form = formStrings(await request.formData());
 		const values = { ad: form.ad ?? '', telefon: form.telefon ?? '' };
 		const parsed = bookingSchema.safeParse(form);
 		if (!parsed.success) {
@@ -132,7 +126,7 @@ export const actions: Actions = {
 			businessId: business.id,
 			serviceId: d.hizmet,
 			resourceId: d.personel === 'herhangi' ? 'any' : d.personel,
-			start: zonedToUtc(d.gun, d.saat, business.timezone),
+			start: new Date(d.saat),
 			customerName: d.ad,
 			customerPhone: d.telefon
 		});

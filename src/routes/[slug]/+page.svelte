@@ -109,18 +109,18 @@
 				{#if data.gun && data.slots.length > 0}
 					<p class="text-sm text-slate-600">{data.gunLabel}</p>
 					<ul class="grid grid-cols-3 gap-2">
-						{#each data.slots as t (t)}
+						{#each data.slots as t (t.value)}
 							<li>
 								<a
 									href={qs({
 										hizmet: data.service.id,
 										personel: data.personel,
 										gun: data.gun,
-										saat: t
+										saat: t.value
 									})}
 									class="flex min-h-12 items-center justify-center rounded-xl border border-slate-300 bg-white font-medium active:bg-slate-100"
 								>
-									{t}
+									{t.label}
 								</a>
 							</li>
 						{/each}
@@ -134,7 +134,7 @@
 				<h2 class="text-lg font-semibold">Bilgileriniz</h2>
 				<section class="rounded-xl border border-slate-200 bg-white p-3 text-sm" aria-label="Özet">
 					<p class="font-medium">{data.service.name} · {formatPrice(data.service.priceKurus)}</p>
-					<p>{data.gunLabel} · {data.saat}</p>
+					<p>{data.gunLabel} · {data.saatLabel}</p>
 					<p class="text-slate-600">{data.info.terms.resource}: {data.staffName}</p>
 				</section>
 

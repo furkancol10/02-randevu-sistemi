@@ -125,3 +125,15 @@ describe('unionSlots ("fark etmez" birleşimi)', () => {
 		expect(unionSlots([[], []])).toEqual([]);
 	});
 });
+
+describe('computeSlots: bozuk parametre koruması', () => {
+	it.each([
+		['stepMin=0 (sonsuz döngü olmamalı)', { stepMin: 0 }],
+		['stepMin<0', { stepMin: -15 }],
+		['durationMin=0', { durationMin: 0 }],
+		['bufferMin<0 (boş aralık üretir)', { bufferMin: -60 }],
+		['stepMin ondalık', { stepMin: 0.5 }]
+	])('%s → slot yok', (_n, over) => {
+		expect(computeSlots({ ...base, ...over })).toEqual([]);
+	});
+});

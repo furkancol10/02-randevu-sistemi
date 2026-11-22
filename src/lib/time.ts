@@ -7,6 +7,26 @@ export function zonedToUtc(date: string, time: string, timezone: string): Date {
 	return new Date(new TZDate(y, mo - 1, d, h, mi, 0, timezone).getTime());
 }
 
+/** "YYYY-MM-DD" gerçek bir takvim günü mü? (2026-11-31 → false; sessizce kaymaz) */
+export function isValidDate(date: string): boolean {
+	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+	if (!m) return false;
+	const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+	const t = new Date(Date.UTC(y, mo - 1, d));
+	return t.getUTCFullYear() === y && t.getUTCMonth() === mo - 1 && t.getUTCDate() === d;
+}
+
+/**
+ * Slot = UTC anı (ISO, saniyeli, ms'siz); etiket işletme yerel saati.
+ * DST geri alımında aynı yerel saat iki kez gelir; "HH:mm" anahtar olamaz, değer olmalı.
+ */
+export function slotOption(instant: Date, timezone: string): { value: string; label: string } {
+	return {
+		value: instant.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+		label: formatTime(instant, timezone)
+	};
+}
+
 /** Takvim günü için hafta günü: 0=Pazar … 6=Cumartesi (saat diliminden bağımsız). */
 export function weekdayOf(date: string): number {
 	const [y, m, d] = date.split('-').map(Number);
