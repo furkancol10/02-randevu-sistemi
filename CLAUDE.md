@@ -2,7 +2,7 @@
 ## Amaç
 Kuaför/güzellik salonları için üyeliksiz, mobil öncelikli online randevu ve yönetim paneli; sonra klinik, diyetisyen, halı saha şablonlarına uyarlanabilir.
 ## Stack
-TBD (mimari kararından sonra yazılır; ön tercih SvelteKit + PostgreSQL)
+SvelteKit 3 + Svelte 5, TypeScript, Drizzle + postgres.js, Zod, Tailwind v4, Vitest + Playwright, Postgres (test: docker, prod: Neon), Vercel. Ayrıntı: docs/ARCHITECTURE.md
 ## Komutlar
 - test: TBD
 - build: TBD
