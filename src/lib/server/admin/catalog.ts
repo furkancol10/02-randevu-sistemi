@@ -58,20 +58,27 @@ export async function updateService(
 	return rows.length ? { ok: true as const } : notFound;
 }
 
-/** Randevusu olan hizmet silinmez: appointments → services FK cascade'i geçmiş randevuları da götürürdü. */
+/**
+ * Randevusu olan hizmet silinmez (geçmiş kayıtlar korunur; pasif yapılır). Satır kilidi (FOR UPDATE)
+ * eşzamanlı randevu eklemesinin FK kontrolüyle (FOR KEY SHARE) çakışır: sayım ile silme arasına
+ * randevu giremez. FK ayrıca ON DELETE RESTRICT'tir: kilit atlansa bile veritabanı reddeder.
+ */
 export async function deleteService(db: Db, businessId: number, id: number) {
-	const [svc] = await db
-		.select({ id: services.id })
-		.from(services)
-		.where(and(eq(services.id, id), eq(services.businessId, businessId)));
-	if (!svc) return notFound;
-	const [{ n }] = await db
-		.select({ n: count() })
-		.from(appointments)
-		.where(and(eq(appointments.serviceId, id), eq(appointments.businessId, businessId)));
-	if (n > 0) return { ok: false as const, reason: 'has_appointments' as const };
-	await db.delete(services).where(and(eq(services.id, id), eq(services.businessId, businessId)));
-	return { ok: true as const };
+	return db.transaction(async (tx) => {
+		const [svc] = await tx
+			.select({ id: services.id })
+			.from(services)
+			.where(and(eq(services.id, id), eq(services.businessId, businessId)))
+			.for('update');
+		if (!svc) return notFound;
+		const [{ n }] = await tx
+			.select({ n: count() })
+			.from(appointments)
+			.where(and(eq(appointments.serviceId, id), eq(appointments.businessId, businessId)));
+		if (n > 0) return { ok: false as const, reason: 'has_appointments' as const };
+		await tx.delete(services).where(eq(services.id, id));
+		return { ok: true as const };
+	});
 }
 
 // ---------- Personel (kaynak) ----------

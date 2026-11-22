@@ -16,7 +16,13 @@ import {
 } from '../../src/lib/server/admin/catalog';
 import { book } from '../../src/lib/server/booking/book';
 import { availableSlots } from '../../src/lib/server/booking/availability';
-import { resourceServices, services, timeOff, workingHours } from '../../src/lib/server/db/schema';
+import {
+	appointments,
+	resourceServices,
+	services,
+	timeOff,
+	workingHours
+} from '../../src/lib/server/db/schema';
 import { NOW, SLOT_10, close, createFixture, db, resetData } from './helpers';
 
 beforeEach(resetData);
@@ -89,6 +95,48 @@ describe('hizmet CRUD (işletmeye kapsamlı)', () => {
 			bufferMin: 0
 		});
 		expect(await deleteService(db, business.id, c.ok ? c.id : 0)).toEqual({ ok: true });
+	});
+});
+
+describe('hizmet silme ve randevular: FK RESTRICT + yarış', () => {
+	const row = (f: Awaited<ReturnType<typeof createFixture>>) => ({
+		businessId: f.business.id,
+		resourceId: f.resources[0].id,
+		serviceId: f.service.id,
+		period: { start: SLOT_10, end: new Date(SLOT_10.getTime() + 30 * 60_000) },
+		durationMin: 30,
+		customerName: 'M',
+		customerPhone: '+905321234567'
+	});
+
+	it('randevusu olan hizmet doğrudan silinemez: randevular CASCADE ile gitmez', async () => {
+		const f = await createFixture(1);
+		await db.insert(appointments).values(row(f));
+		await expect(db.delete(services).where(eq(services.id, f.service.id))).rejects.toThrow();
+		expect(await db.select().from(appointments)).toHaveLength(1);
+	});
+
+	it('silme sırasında eşzamanlı oluşan randevu sessizce silinmez (has_appointments döner)', async () => {
+		const f = await createFixture(1);
+		let release!: () => void;
+		const gate = new Promise<void>((r) => (release = r));
+		let inserted!: () => void;
+		const insertedP = new Promise<void>((r) => (inserted = r));
+		// müşteri: randevuyu ekler, henüz commit etmez
+		const customer = db.transaction(async (tx) => {
+			await tx.insert(appointments).values(row(f));
+			inserted();
+			await gate;
+		});
+		await insertedP;
+		// admin: aynı sırada hizmeti silmeye çalışır (kilitte bekler)
+		const del = deleteService(db, f.business.id, f.service.id);
+		await new Promise((r) => setTimeout(r, 300));
+		release();
+		await customer;
+		expect(await del).toEqual({ ok: false, reason: 'has_appointments' });
+		expect(await db.select().from(services).where(eq(services.id, f.service.id))).toHaveLength(1);
+		expect(await db.select().from(appointments)).toHaveLength(1);
 	});
 });
 

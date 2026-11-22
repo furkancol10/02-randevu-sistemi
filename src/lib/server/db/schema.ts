@@ -132,9 +132,10 @@ export const appointments = pgTable(
 		resourceId: integer('resource_id')
 			.notNull()
 			.references(() => resources.id, { onDelete: 'cascade' }),
+		// RESTRICT: hizmet silinirken randevular (özellikle eşzamanlı yenileri) sessizce gitmesin
 		serviceId: integer('service_id')
 			.notNull()
-			.references(() => services.id, { onDelete: 'cascade' }),
+			.references(() => services.id, { onDelete: 'restrict' }),
 		/** Dolu aralık: başlangıç .. başlangıç + süre + buffer. Çakışma kısıtı bunun üstünde (bkz. drizzle/ özel migration). */
 		period: tstzrange().notNull(),
 		/** Hizmet süresi anlık kopyası (buffer hariç); bitiş = lower(period) + durationMin. */
