@@ -31,7 +31,12 @@ describe('çakışma koruması (kabul testi #1)', () => {
 
 	it('kısmen kesişen slot conflict, bitişik slot başarılı', async () => {
 		const { business, service, resources } = await createFixture(1);
-		const base = { businessId: business.id, serviceId: service.id, resourceId: resources[0].id, ...customer };
+		const base = {
+			businessId: business.id,
+			serviceId: service.id,
+			resourceId: resources[0].id,
+			...customer
+		};
 
 		expect((await book(db, { ...base, start: SLOT_10 }, NOW)).ok).toBe(true);
 		const overlap = await book(db, { ...base, start: SLOT_1015 }, NOW);

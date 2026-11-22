@@ -35,15 +35,25 @@ describe('computeSlots (kabul testi #2)', () => {
 			})
 		);
 		expect(slots).toEqual([
-			'09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00',
-			'14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'
+			'09:00',
+			'09:30',
+			'10:00',
+			'10:30',
+			'11:00',
+			'11:30',
+			'12:00',
+			'14:00',
+			'14:30',
+			'15:00',
+			'15:30',
+			'16:00',
+			'16:30',
+			'17:00'
 		]);
 	});
 
 	it('izin aralığıyla kesişen slotları eler', () => {
-		const slots = hhmm(
-			computeSlots({ ...base, busy: [{ start: at('11:00'), end: at('12:00') }] })
-		);
+		const slots = hhmm(computeSlots({ ...base, busy: [{ start: at('11:00'), end: at('12:00') }] }));
 		// 10:00-11:00 biter 11:00'de (yarı açık) -> serbest; 10:30-11:30 kesişir -> yok
 		expect(slots).toContain('10:00');
 		expect(slots).not.toContain('10:30');
