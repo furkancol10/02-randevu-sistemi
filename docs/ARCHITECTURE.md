@@ -14,7 +14,7 @@ Kaynak: reports/mimari-taslak-opus.md + reports/mimari-taslak-neon.md (bağıms�
 8. **Hatırlatma (0 TL):** onayda `.ics` (VALARM 2 sa önce), `wa.me` ve `mailto:` linkleri, `/r/[manage_token]` görüntüle/iptal; adminde "WhatsApp ile hatırlat" butonu.
 9. **Barındırma:** Vercel Hobby + Neon Free (pooled bağlantı, `prepare: false`). Demo verisi her gece sıfırlanır (GitHub Actions cron → korumalı `/api/demo-reset`). Hobby ticari değil: müşteri kurulumunda müşterinin kendi planı.
 10. **Sektör şablonu:** `src/lib/verticals/{kuafor,klinik,diyetisyen,halisaha}.ts` tipli config (terimler, slot adımı, onay gerekli mi, buffer, renk, seed); `businesses.settings` salon bazında ezer.
-11. **Güvenlik/kötüye kullanım:** honeypot, IP hız sınırı, TR telefon doğrulama, KVKK aydınlatma metni.
+11. **Güvenlik/kötüye kullanım:** honeypot, TR telefon doğrulama, KVKK aydınlatma metni; hız sınırı **Postgres'te** (`rate_limits` tablosu, tek upsert deyimiyle atomik sayaç; serverless'ta örnekler arası paylaşılır): randevu IP başına, giriş IP + e-posta başına.
 
 ## Klasör
 `src/lib/server/{db,booking,auth}` · `src/lib/verticals` · `src/lib/ics.ts` · `src/routes/[slug]` · `src/routes/admin` · `src/routes/r/[token]` · `drizzle/` · `scripts/seed.ts` · `tests/{unit,integration}` · `e2e/`
