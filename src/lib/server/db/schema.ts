@@ -17,17 +17,21 @@ import { tstzrange } from './range';
 
 const id = () => integer().primaryKey().generatedAlwaysAsIdentity();
 
-export const businesses = pgTable('businesses', {
-	id: id(),
-	slug: text().notNull().unique(),
-	name: text().notNull(),
-	vertical: text().notNull(),
-	timezone: text().notNull().default('Europe/Istanbul'),
-	slotStepMin: integer('slot_step_min').notNull().default(15),
-	/** wa.me biçimi: yalnız rakam, ülke kodlu (905321234567) */
-	phone: text(),
-	settings: jsonb().$type<Record<string, unknown>>().notNull().default({})
-});
+export const businesses = pgTable(
+	'businesses',
+	{
+		id: id(),
+		slug: text().notNull().unique(),
+		name: text().notNull(),
+		vertical: text().notNull(),
+		timezone: text().notNull().default('Europe/Istanbul'),
+		slotStepMin: integer('slot_step_min').notNull().default(15),
+		/** wa.me biçimi: yalnız rakam, ülke kodlu (905321234567) */
+		phone: text(),
+		settings: jsonb().$type<Record<string, unknown>>().notNull().default({})
+	},
+	(t) => [check('businesses_slot_step_pos', sql`${t.slotStepMin} > 0`)]
+);
 
 export const admins = pgTable('admins', {
 	id: id(),
@@ -60,7 +64,10 @@ export const services = pgTable(
 		active: boolean().notNull().default(true),
 		sort: integer().notNull().default(0)
 	},
-	(t) => [check('services_duration_pos', sql`${t.durationMin} > 0`)]
+	(t) => [
+		check('services_duration_pos', sql`${t.durationMin} > 0`),
+		check('services_buffer_nonneg', sql`${t.bufferMin} >= 0`)
+	]
 );
 
 export const resources = pgTable('resources', {
@@ -139,6 +146,9 @@ export const appointments = pgTable(
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 	},
 	(t) => [
+		check('appointments_duration_pos', sql`${t.durationMin} > 0`),
+		// boş aralık exclusion kısıtını etkisizleştirir (boş && x = false)
+		check('appointments_period_nonempty', sql`not isempty(${t.period})`),
 		check('appointments_status', sql`${t.status} in ('pending','confirmed','cancelled')`),
 		index('appointments_business_idx').on(t.businessId, t.resourceId)
 	]
