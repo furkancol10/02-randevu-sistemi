@@ -2,7 +2,7 @@
 
 Kuaför ve güzellik salonları için **üyeliksiz, mobil öncelikli online randevu** ve salon yönetim paneli. Müşteri hesap açmadan 4 adımda randevu alır; salon sahibi takvimi, hizmetleri ve personeli panelden yönetir. Sektör şablonları (klinik, diyetisyen, halı saha) için config tabanlı altyapı hazırdır.
 
-**Canlı demo:** `https://DEMO-URL-BURAYA` (yönetim paneli: `/admin`)
+**Canlı demo:** [02-randevu-sistemi.vercel.app/demo-kuafor](https://02-randevu-sistemi.vercel.app/demo-kuafor) (yönetim paneli: `/admin`)
 
 | Randevu akışı (360px)                             | Onay sayfası (360px)              | Admin takvimi                                 |
 | ------------------------------------------------- | --------------------------------- | --------------------------------------------- |
