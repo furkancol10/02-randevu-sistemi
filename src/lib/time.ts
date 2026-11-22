@@ -1,0 +1,74 @@
+import { TZDate } from '@date-fns/tz';
+
+/** "2026-11-23" + "09:00" + saat dilimi → UTC anı. Sunucu saat diliminden bağımsız. */
+export function zonedToUtc(date: string, time: string, timezone: string): Date {
+	const [y, mo, d] = date.split('-').map(Number);
+	const [h, mi] = time.split(':').map(Number);
+	return new Date(new TZDate(y, mo - 1, d, h, mi, 0, timezone).getTime());
+}
+
+/** Takvim günü için hafta günü: 0=Pazar … 6=Cumartesi (saat diliminden bağımsız). */
+export function weekdayOf(date: string): number {
+	const [y, m, d] = date.split('-').map(Number);
+	return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+export function addDays(date: string, n: number): string {
+	const [y, m, d] = date.split('-').map(Number);
+	return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+/** Yerel günün [00:00, ertesi 00:00) sınırları (UTC). */
+export function dayBoundsUtc(date: string, timezone: string): { start: Date; end: Date } {
+	return {
+		start: zonedToUtc(date, '00:00', timezone),
+		end: zonedToUtc(addDays(date, 1), '00:00', timezone)
+	};
+}
+
+/** Bir anın işletme saat dilimindeki takvim günü ("YYYY-MM-DD"). */
+export function localDate(instant: Date, timezone: string): string {
+	return new Intl.DateTimeFormat('en-CA', {
+		timeZone: timezone,
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit'
+	}).format(instant);
+}
+
+export function formatTime(instant: Date, timezone: string): string {
+	return new Intl.DateTimeFormat('tr-TR', {
+		timeZone: timezone,
+		hour: '2-digit',
+		minute: '2-digit',
+		hourCycle: 'h23'
+	}).format(instant);
+}
+
+/** "23 Kasım Pazartesi" */
+export function formatDayLong(date: string, timezone: string): string {
+	return new Intl.DateTimeFormat('tr-TR', {
+		timeZone: timezone,
+		day: 'numeric',
+		month: 'long',
+		weekday: 'long'
+	}).format(zonedToUtc(date, '12:00', timezone));
+}
+
+/** "Pzt" */
+export function formatWeekdayShort(date: string, timezone: string): string {
+	return new Intl.DateTimeFormat('tr-TR', { timeZone: timezone, weekday: 'short' }).format(
+		zonedToUtc(date, '12:00', timezone)
+	);
+}
+
+/** "25000" kuruş → "250 TL" (kuruşlu ise "250,50 TL") */
+export function formatPrice(kurus: number): string {
+	const whole = kurus % 100 === 0;
+	return (
+		new Intl.NumberFormat('tr-TR', {
+			minimumFractionDigits: whole ? 0 : 2,
+			maximumFractionDigits: 2
+		}).format(kurus / 100) + ' TL'
+	);
+}
