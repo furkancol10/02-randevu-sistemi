@@ -18,6 +18,7 @@ export const kuafor: VerticalConfig = {
 	slotStepMin: 15,
 	requiresApproval: false,
 	maxAdvanceDays: 30,
+	cancelWindowHours: 2,
 	accent: '#be185d',
 	seed: {
 		business: {

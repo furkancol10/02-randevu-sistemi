@@ -29,6 +29,8 @@ export type VerticalConfig = {
 	requiresApproval: boolean;
 	/** Kaç gün sonrasına randevu alınabilir */
 	maxAdvanceDays: number;
+	/** Müşteri, randevudan en geç kaç saat önce iptal edebilir (admin iptali bundan etkilenmez) */
+	cancelWindowHours: number;
 	accent: string;
 	seed: {
 		business: { slug: string; name: string; phone: string; address: string };
