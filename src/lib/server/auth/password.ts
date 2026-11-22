@@ -18,8 +18,13 @@ export async function createAdmin(
 	return row;
 }
 
-// Kullanıcı yoksa da bir doğrulama yapılır: yanıt süresi e-posta varlığını sızdırmasın
-let dummyHash: Promise<string> | undefined;
+/**
+ * Kullanıcı yoksa da bir doğrulama yapılır: yanıt süresi e-posta varlığını sızdırmasın. Sabit özet
+ * (gerçek şifre özetiyle aynı argon2id parametreleri, bkz. tests/unit/dummy-hash.test.ts): istek
+ * anında ikinci bir hash hesabı yapılmaz. Parametreler değişirse bu değer yeniden üretilmeli.
+ */
+export const DUMMY_HASH =
+	'$argon2id$v=19$m=19456,t=2,p=1$lqwpn+b6pPq5yXrootkN/g$TUkp74SZvb0H3LipR0J5OAvZhjyW5uN3v/YcbJNEfpM';
 
 /** E-posta + şifre doğru ise admin, değilse null. */
 export async function authenticate(db: Db, email: string, password: string) {
@@ -28,8 +33,7 @@ export async function authenticate(db: Db, email: string, password: string) {
 		.from(admins)
 		.where(eq(admins.email, normalizeEmail(email)));
 	if (!admin) {
-		dummyHash ??= hash('kullanici-yok');
-		await verify(await dummyHash, password).catch(() => false);
+		await verify(DUMMY_HASH, password).catch(() => false);
 		return null;
 	}
 	const ok = await verify(admin.passwordHash, password).catch(() => false);
