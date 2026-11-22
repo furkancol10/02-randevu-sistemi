@@ -4,8 +4,11 @@ Kuaför/güzellik salonları için üyeliksiz, mobil öncelikli online randevu v
 ## Stack
 SvelteKit 3 + Svelte 5, TypeScript, Drizzle + postgres.js, Zod, Tailwind v4, Vitest + Playwright, Postgres (test: docker, prod: Neon), Vercel. Ayrıntı: docs/ARCHITECTURE.md
 ## Komutlar
-- test: TBD
-- build: TBD
+- ilk kurulum: `npm i && cp .env.example .env && npm run db:start && npm run db:migrate && npm run db:seed`
+- dev: `npm run dev` (demo: /demo-kuafor) · build: `npm run build`
+- test: `npm test` (= `test:unit` + `test:integration`; entegrasyon gerçek Postgres ister: `npm run db:start`) · e2e 360px: `npm run test:e2e` · tip/svelte: `npm run check` · lint: `npm run lint`
+- db: `db:start|stop` (docker, postgres:17, port 5433) · `db:generate` (şema→migration) · `db:migrate` · `db:seed` (demo salonu sıfırlar)
+- SvelteKit 3: `$lib` yerine `#lib/...ts` (uzantılı), `$app/env/private`; yapılandırma vite.config.ts içinde
 ## Model rolleri
 Claude = planlar, kod yazar, commit eder; Gem Neon = kod/plan review ve ikinci görüş; Hydrogen = araştırma özetleri (reports/). Ayrıntı: kullanıcının global ~/.claude/CLAUDE.md dosyası.
 ## Kurallar

@@ -17,8 +17,7 @@ const utc = (d: Date) =>
 		.replace(/[-:]/g, '')
 		.replace(/\.\d{3}/, '');
 
-const escapeText = (s: string) =>
-	s.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+const escapeText = (s: string) => s.replace(/[\\;,]/g, (c) => '\\' + c).replace(/\r?\n/g, '\\n');
 
 /** RFC 5545: satırlar en çok 75 oktet; devam satırı boşlukla başlar. Çok baytlı karakter bölünmez. */
 function fold(line: string): string {

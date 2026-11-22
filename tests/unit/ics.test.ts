@@ -46,7 +46,7 @@ describe('buildIcs', () => {
 
 	it('özel karakterleri kaçırır (virgül, noktalı virgül, satır sonu)', () => {
 		const unfolded = ics.replace(/\r\n /g, '');
-		expect(unfolded).toContain('DESCRIPTION:Personel: Mehmet\\nRandevunu yönet\; iptal et');
+		expect(unfolded).toContain('DESCRIPTION:Personel: Mehmet\\nRandevunu yönet\\; iptal et');
 		expect(unfolded).toContain('LOCATION:Örnek Mah. Deneme Sok. No:5\\, Kadıköy');
 	});
 
