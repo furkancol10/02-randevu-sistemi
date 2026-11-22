@@ -67,8 +67,14 @@ test('360px: admin girişi → bir randevuyu onayla → diğerini iptal et → �
 	await noOverflow(page);
 
 	// Çıkış: oturum biter, panel yeniden korumalı
+	const sessionCookies = await page.context().cookies();
+	expect(sessionCookies.some((c) => c.name === 'oturum')).toBe(true);
 	await page.getByRole('button', { name: 'Çıkış' }).click();
 	await expect(page).toHaveURL(/\/admin\/giris$/);
+	await page.goto('/admin/takvim');
+	await expect(page).toHaveURL(/\/admin\/giris$/);
+	// Sunucu tarafı: çıkıştan önce kopyalanan çerez geri gönderilse bile oturum geçersiz
+	await page.context().addCookies(sessionCookies);
 	await page.goto('/admin/takvim');
 	await expect(page).toHaveURL(/\/admin\/giris$/);
 });

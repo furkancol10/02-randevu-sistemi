@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	getAppointment,
 	listAppointments,
@@ -10,6 +10,7 @@ import { appointments } from '../../src/lib/server/db/schema';
 import { NOW, SLOT_10, SLOT_1030, close, createFixture, db, resetData } from './helpers';
 
 beforeEach(resetData);
+afterEach(() => vi.useRealTimers());
 afterAll(close);
 
 const DAY = { from: new Date('2026-11-23T00:00:00Z'), to: new Date('2026-11-24T00:00:00Z') };
@@ -96,6 +97,10 @@ describe('admin onay/iptal durum geçişleri', () => {
 
 	it('admin iptali iptal penceresine takılmaz (randevuya 10 dk kala bile)', async () => {
 		const { a, apptA } = await twoBusinesses();
+		// Saat sabit: randevu 2026-11-23T07:00Z; şimdi = 06:50Z. Gerçek saate bağlı kalırsa, ileride
+		// eklenecek bir "2 saat kuralı" bu testi yalancı yeşil bırakır.
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date(SLOT_10.getTime() - 10 * 60_000));
 		expect(await setAppointmentStatus(db, a.business.id, apptA, 'cancelled')).toEqual({ ok: true });
 	});
 

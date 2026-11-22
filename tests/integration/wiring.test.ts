@@ -20,6 +20,7 @@ const bookingPage = await import('../../src/routes/[slug]/+page.server');
 const detail = await import('../../src/routes/admin/(panel)/randevu/[id]/+page.server');
 const manage = await import('../../src/routes/r/[token]/+page.server');
 const onay = await import('../../src/routes/[slug]/onay/[token]/+page.server');
+const cikis = await import('../../src/routes/admin/(panel)/cikis/+page.server');
 const takvim = await import('../../src/routes/admin/(panel)/takvim/+page.server');
 const personel = await import('../../src/routes/admin/(panel)/personel/+page.server');
 
@@ -50,6 +51,7 @@ const call = (fn: unknown, event: Record<string, unknown>) =>
 
 async function runHandle(path: string, cookies = fakeCookies()) {
 	const locals: Record<string, unknown> = {};
+	const headers: Record<string, string> = {};
 	const resolve = vi.fn(() => Promise.resolve(new Response('ok')));
 	const res = await (handle as (a: never) => Promise<Response>)({
 		event: {
@@ -57,11 +59,11 @@ async function runHandle(path: string, cookies = fakeCookies()) {
 			cookies,
 			locals,
 			request: new Request(`http://x.test${path}`),
-			setHeaders: () => {}
+			setHeaders: (h: Record<string, string>) => void Object.assign(headers, h)
 		},
 		resolve
 	} as never);
-	return { res, locals, resolve, cookies };
+	return { res, locals, resolve, cookies, headers };
 }
 
 describe('hooks: /admin koruması', () => {
@@ -114,6 +116,43 @@ describe('hooks: /admin koruması', () => {
 		expect(pub.res.status).toBe(200);
 		const loginPage = await runHandle('/admin/giris');
 		expect(loginPage.res.status).toBe(200);
+	});
+});
+
+describe('çıkış ve önbellek başlığı (Neon #12)', () => {
+	async function loggedIn() {
+		const { business } = await createFixture(1);
+		const admin = await createAdmin(db, {
+			businessId: business.id,
+			email: 'a@b.test',
+			password: 'x'.repeat(8)
+		});
+		const { token } = await createSession(db, admin.id);
+		return token;
+	}
+
+	it('çıkış: DB oturumu silinir; eski çerez geri gönderilse bile yönlendirilir', async () => {
+		const token = await loggedIn();
+		const cookies = fakeCookies({ [SESSION_COOKIE]: token });
+		await expect(call(cikis.actions.default, { cookies })).rejects.toMatchObject({
+			status: 303,
+			location: '/admin/giris'
+		});
+		expect(cookies.get(SESSION_COOKIE)).toBeUndefined();
+		expect(await validateSession(db, token)).toBeNull();
+		const replay = await runHandle('/admin/takvim', fakeCookies({ [SESSION_COOKIE]: token }));
+		expect(replay.res.status).toBe(303);
+		expect(replay.resolve).not.toHaveBeenCalled();
+	});
+
+	it('/admin yanıtları (giriş sayfası dahil) cache-control: private, no-store taşır', async () => {
+		const token = await loggedIn();
+		const panel = await runHandle('/admin/takvim', fakeCookies({ [SESSION_COOKIE]: token }));
+		expect(panel.headers['cache-control']).toBe('private, no-store');
+		const redirected = await runHandle('/admin/takvim');
+		expect(redirected.headers['cache-control']).toBe('private, no-store');
+		const loginPage = await runHandle('/admin/giris');
+		expect(loginPage.headers['cache-control']).toBe('private, no-store');
 	});
 });
 
