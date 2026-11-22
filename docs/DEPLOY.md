@@ -4,11 +4,11 @@ Tüm hesap adımlarını sen yaparsın. Kod tarafı hazır: build sırasında mi
 
 ## 0. Ön kontrol
 
-Bu klasörde gizli bilgi yok (`.env` git'e girmez; `git status` temiz olmalı). Mevcut `origin` uzağı eski bir adresi gösteriyor (`furkancol10/02-randevu-sistemi`); aşağıda yeni repoya çevrilir.
+Bu klasörde gizli bilgi yok (`.env` git'e girmez; `git status` temiz olmalı). `origin`: `furkancol10/fc-randevu-sistemi`.
 
 ## 1. GitHub reposu + push
 
-1. Repo zaten var: `github.com/furkancol10/02-randevu-sistemi` (public, `origin` olarak bağlı). Terminalde (proje klasöründe):
+1. Repo zaten var: `github.com/furkancol10/fc-randevu-sistemi` (public, `origin` olarak bağlı). Terminalde (proje klasöründe):
    ```bash
    git push                            # dal: master
    ```
