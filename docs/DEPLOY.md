@@ -8,14 +8,11 @@ Bu klasörde gizli bilgi yok (`.env` git'e girmez; `git status` temiz olmalı). 
 
 ## 1. GitHub reposu + push
 
-1. Terminalde (proje klasöründe):
+1. Repo zaten var: `github.com/furkancol10/02-randevu-sistemi` (public, `origin` olarak bağlı). Terminalde (proje klasöründe):
    ```bash
-   gh auth status                      # giriş yoksa: gh auth login
-   git remote remove origin            # eski origin'i kaldır
-   gh repo create furkancol10/randevu-sistemi --public --source . --remote origin
-   git push -u origin main             # dal adı farklıysa: git branch --show-current
+   git push                            # dal: master
    ```
-2. github.com/furkancol10/randevu-sistemi sayfasında dosyaların göründüğünü ve `.env` olmadığını kontrol et.
+2. GitHub sayfasında son commit'lerin göründüğünü ve `.env` olmadığını kontrol et.
 
 ## 2. Vercel'de projeyi içe aktar
 
