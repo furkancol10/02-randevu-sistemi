@@ -27,6 +27,7 @@ export default defineConfig({
 		port: PORT,
 		reuseExistingServer: !process.env.CI,
 		timeout: 120_000,
-		env: { DATABASE_URL: process.env.DATABASE_URL ?? '' }
+		// BOOKING_RATE_MAX: e2e aynı IP'den çok randevu alır (IP hız sınırı varsayılanı 10/10 dk)
+		env: { DATABASE_URL: process.env.DATABASE_URL ?? '', BOOKING_RATE_MAX: '1000' }
 	}
 });

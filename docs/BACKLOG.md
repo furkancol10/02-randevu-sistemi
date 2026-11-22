@@ -1,11 +1,10 @@
 # Backlog
 ## Yapılacak
-- [ ] Admin: giriş (argon2 + DB oturumu), günlük/haftalık takvim, randevu onay/iptal — bitti ne zaman: kabul testi #4 (yetki) ve #5 admin e2e geçer
-- [ ] Yönetim: hizmet/personel/çalışma saati/izin CRUD (admin içinde)
-- [ ] `/r/[manage_token]` görüntüle/iptal sayfası (onay sayfasındaki token ile aynı) — bitti ne zaman: müşteri iptal eder, slot yeniden alınabilir (e2e)
-- [ ] IP hız sınırı (ARCHITECTURE §11); şu an yalnız honeypot + Zod
-- [ ] Deploy: Vercel + Neon, `/api/demo-reset` + GitHub Actions gece sıfırlama
-- [ ] 2. sektör önizlemesi (klinik/diyetisyen/halı saha config); `requiresApproval` akışı UI'da (status pending metni hazır, admin onayı yok)
+- [ ] Deploy: Vercel + Neon, `/api/demo-reset` + GitHub Actions gece sıfırlama (reset `seedVertical` + `seedDemoAppointments` çağırır). Vercel'de `@node-rs/argon2` Linux ikilisinin pakete girdiği doğrulanmalı (build'de diğer platform ikilileri için uyarı çıkıyor, zararsız)
+- [ ] 2. sektör önizlemesi (klinik/diyetisyen/halı saha config); `requiresApproval: true` sektörde müşteri metni "talebiniz alındı" hazır, admin onayı çalışıyor
 - [ ] Onay mailto: linki (işletme e-postası alanı yok; şemaya eklenecek)
 - [ ] Gün şeridi 14 gün sabit; 30 güne kadar ileri-geri gezinme
+- [ ] Hız sınırı kalıcı depoya (Redis/Upstash ya da Postgres) taşınsın: bellek içi sınır serverless'ta örnek başınadır
+- [ ] Admin: elle randevu ekleme (telefonla gelen müşteri), izin eklerken çakışan randevu uyarısı, randevu yeniden zamanlama
+- [ ] Admin: şifre değiştirme, birden çok yönetici; demo girişi müşteri kurulumunda kapatılacak (`src/lib/demo.ts` + seed)
 ## Devam eden

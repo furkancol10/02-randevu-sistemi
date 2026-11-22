@@ -1,7 +1,13 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { seedVertical } from '../../scripts/seed';
-import { businesses, resources, services } from '../../src/lib/server/db/schema';
+import {
+	admins,
+	appointments,
+	businesses,
+	resources,
+	services
+} from '../../src/lib/server/db/schema';
 import { getVertical } from '../../src/lib/verticals';
 import { close, db, resetData } from './helpers';
 
@@ -26,5 +32,18 @@ describe('seedVertical atomik (#12)', () => {
 		expect(after[0].id).toBe(before[0].id); // silinip yeniden yazılmadı
 		expect((await db.select().from(services)).length).toBeGreaterThan(0);
 		expect((await db.select().from(resources)).length).toBeGreaterThan(0);
+	});
+});
+
+describe('seedDemoAppointments', () => {
+	it('admin panelini dolduran 5 kurgusal randevu; ikisi onay bekliyor; yönetici demo hesabı var', async () => {
+		const { seedDemoAppointments } = await import('../../scripts/seed');
+		const business = await seedVertical(db, 'kuafor');
+		await seedDemoAppointments(db, business.slug, new Date('2026-11-20T06:00:00Z'));
+		const rows = await db.select().from(appointments);
+		expect(rows).toHaveLength(5);
+		expect(rows.filter((r) => r.status === 'pending')).toHaveLength(2);
+		const [admin] = await db.select().from(admins);
+		expect(admin).toMatchObject({ businessId: business.id, email: 'demo@zumrutmakas.example' });
 	});
 });
