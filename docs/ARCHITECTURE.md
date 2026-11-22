@@ -1,9 +1,11 @@
 # Mimari
+
 Durum: onaylı (kullanıcı, 2026-11-22)
 
 Kaynak: reports/mimari-taslak-opus.md + reports/mimari-taslak-neon.md (bağımsız; 10 kararın 10'unda aynı yön). Taban Opus taslağı, Neon'dan eklenenler işaretli.
 
 ## Kararlar
+
 1. **Stack:** SvelteKit 3 (npm 3.4.0) + Svelte 5 (runes), TypeScript, `adapter-vercel`; Drizzle ORM + postgres.js; Zod (form actions); Tailwind v4; `date-fns` v4 + `@date-fns/tz`; Vitest + Playwright. Kurulumdan önce resmi SvelteKit 3 geçiş rehberi okunur.
 2. **Saat:** anlar `timestamptz`/`tstzrange '[)'` (UTC); haftalık saatler yerel `time`, `businesses.timezone = 'Europe/Istanbul'` ile çevrilir.
 3. **Veri modeli:** `businesses(id, slug, name, vertical, timezone, slot_step_min, phone, settings jsonb)`, `admins`, `sessions`, `services(…, duration_min, price_kurus, buffer_min, active)`, `resources(…, kind)` (personel/doktor/saha), `resource_services`, `working_hours` (günde çok aralık), `time_off(period tstzrange)`, `appointments(…, period tstzrange, customer_name, customer_phone, status pending|confirmed|cancelled, manage_token)`.
@@ -17,9 +19,11 @@ Kaynak: reports/mimari-taslak-opus.md + reports/mimari-taslak-neon.md (bağıms�
 11. **Güvenlik/kötüye kullanım:** honeypot, TR telefon doğrulama, KVKK aydınlatma metni; hız sınırı **Postgres'te** (`rate_limits` tablosu, tek upsert deyimiyle atomik sayaç; serverless'ta örnekler arası paylaşılır): randevu IP başına, giriş IP + e-posta başına.
 
 ## Klasör
+
 `src/lib/server/{db,booking,auth}` · `src/lib/verticals` · `src/lib/ics.ts` · `src/routes/[slug]` · `src/routes/admin` · `src/routes/r/[token]` · `drizzle/` · `scripts/seed.ts` · `tests/{unit,integration}` · `e2e/`
 
 ## Kabul testleri
+
 1. **Çakışma (en kritik):** gerçek Postgres'te (docker) aynı slota 10 paralel istek → tam 1 başarı, 9× 409; kısıt kaldırılınca test FAIL; iptal edilen slot tekrar alınabilir.
 2. Slot birim: öğle arası, izin, buffer, gün sonu taşması, geçmiş saat, "fark etmez" birleşimi.
 3. Saat dilimi: UTC sunucuda 09:00 İstanbul → 06:00Z.
@@ -27,4 +31,5 @@ Kaynak: reports/mimari-taslak-opus.md + reports/mimari-taslak-neon.md (bağıms�
 5. E2E (360px): hizmet → slot → ad/telefon → onay + `.ics`; admin onay/iptal.
 
 ## MVP dışı
+
 Online ödeme/kapora, otomatik SMS/WhatsApp, müşteri hesabı, çok şube, self-servis kayıt, Google Calendar senkronu, tekrarlayan randevu, bekleme listesi, çoklu dil, raporlar.

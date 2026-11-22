@@ -1,5 +1,6 @@
 # Changelog
 
+- 2026-11-22: **Dağıtım hazırlığı (Vercel + Neon).** `adapter-vercel` bölge `fra1`; `vercel-build` = `scripts/deploy-db.ts` (migration `DATABASE_URL_UNPOOLED` ile, demo salonu yalnız yoksa kurulur) + `vite build`; seed mantığı `src/lib/server/demo/seed.ts`'e taşındı (`resetDemo`, `ensureDemo`; `scripts/seed.ts` CLI + re-export). `POST /api/demo-reset` (`x-demo-reset-secret`, `timingSafeEqual`, yalnız `demo-kuafor`) + `.github/workflows/demo-reset.yml`; entegrasyon testi (yanlış/eksik secret 401, doğru secret demoyu geri getirir, diğer işletme dokunulmaz). README, docs/DEPLOY.md, `.env.example`, ekran görüntüleri (`scripts/screenshots.ts`). `@node-rs/argon2-linux-x64-gnu` lockfile'da ve `.vercel/output` fonksiyon paketinde doğrulandı.
 - 2026-11-22: proje iskeleti kuruldu
 - 2026-11-22: **Faz 1 – müşteri randevu akışı çekirdeği.** SvelteKit 3.4 + Svelte 5 + Tailwind 4 iskeleti; Postgres 17 (docker, btree_gist); Drizzle şeması + `appointments_no_overlap` exclusion constraint (özel migration `drizzle/0001`); `slots.ts`, `book.ts`, `availability.ts`; `/[slug]` mobil akış (hizmet → personel/fark etmez → gün+slot → ad/telefon → onay); onay sayfası + `wa.me` + `.ics` (VALARM 2 sa); seed (demo-kuafor); testler: 43 birim, 11 entegrasyon, 2 e2e (360px).
   - Kabul testi #1: 10 paralel istek → 1 başarı/9 conflict; constraint migration'ı kaldırılınca 5 test FAIL ettiği doğrulandı.
@@ -30,4 +31,3 @@
   - #11 yeniden girişte önceki oturum çerezinin DB kaydı silinir. **Kısmen reddedildi:** süresi dolan oturumlar zaten `createSession` içinde temizleniyor; oturum sayısı artık IP giriş sınırıyla (20/15 dk) kısıtlı; `expires_at` indeksi küçük tablo için eklenmedi.
   - #12 yeni testler: çıkışta DB oturumu silinir + eski çerez tekrarı (wiring ve e2e), `/admin` yanıtlarında `cache-control: private, no-store`. e2e global-setup artık hız sınırı sayaçlarını temizler (15 dk kalıcı sayaç art arda koşuları kilitlemesin).
   - Mutasyon doğrulaması (kod bozuldu, test FAIL gördü, geri alındı): giriş eylemindeki `cookies.set` (login e2e), `setAppointmentStatus` onay güncellemesi (onay/iptal e2e), `cikis` içindeki `deleteSession` (e2e + wiring), `hooks` `cache-control` (wiring), admin iptaline 2 sa kuralı (#10 testi).
-
