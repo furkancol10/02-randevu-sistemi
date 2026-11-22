@@ -47,7 +47,9 @@ export async function loadDay(
 	resourceIds: number[],
 	date: string,
 	timezone: string,
-	withAppointments: boolean
+	withAppointments: boolean,
+	/** Gün sonuna yakın slotun buffer'ı ertesi güne taşar; o taşmayı da yakalamak için pencere genişler */
+	bufferMin = 0
 ): Promise<DayData> {
 	const out: DayData = { ranges: new Map(), timeOff: new Map(), appts: new Map(), load: new Map() };
 	for (const id of resourceIds) {
@@ -58,6 +60,7 @@ export async function loadDay(
 	}
 	if (resourceIds.length === 0) return out;
 	const day = dayBoundsUtc(date, timezone);
+	const window = { start: day.start, end: new Date(day.end.getTime() + bufferMin * 60_000) };
 
 	const wh = await db
 		.select()
@@ -77,7 +80,7 @@ export async function loadDay(
 		.select()
 		.from(timeOff)
 		.where(
-			and(inArray(timeOff.resourceId, resourceIds), sql`${timeOff.period} && ${rangeSql(day)}`)
+			and(inArray(timeOff.resourceId, resourceIds), sql`${timeOff.period} && ${rangeSql(window)}`)
 		);
 	for (const o of off) out.timeOff.get(o.resourceId)!.push(o.period);
 
@@ -88,10 +91,15 @@ export async function loadDay(
 			and(
 				inArray(appointments.resourceId, resourceIds),
 				ne(appointments.status, 'cancelled'),
-				sql`${appointments.period} && ${rangeSql(day)}`
+				sql`${appointments.period} && ${rangeSql(window)}`
 			)
 		);
 	for (const a of appts) {
+		if (a.period.start.getTime() >= day.end.getTime()) {
+			// ertesi güne ait; yalnız çakışma için gerekli, günün yükü sayılmaz
+			if (withAppointments) out.appts.get(a.resourceId)!.push(a.period);
+			continue;
+		}
 		out.load.set(a.resourceId, (out.load.get(a.resourceId) ?? 0) + 1);
 		if (withAppointments) out.appts.get(a.resourceId)!.push(a.period);
 	}
@@ -111,7 +119,14 @@ export async function slotsByResource(
 	withAppointments: boolean
 ): Promise<{ data: DayData; slots: Map<number, Date[]> }> {
 	const { business, service, date, now } = opts;
-	const data = await loadDay(db, resourceIds, date, business.timezone, withAppointments);
+	const data = await loadDay(
+		db,
+		resourceIds,
+		date,
+		business.timezone,
+		withAppointments,
+		service.bufferMin
+	);
 	const slots = new Map<number, Date[]>();
 	for (const id of resourceIds) {
 		slots.set(

@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { book } from '../../src/lib/server/booking/book';
-import { appointments, timeOff } from '../../src/lib/server/db/schema';
+import { appointments, resourceServices, timeOff } from '../../src/lib/server/db/schema';
 import { NOW, SLOT_10, close, createFixture, db, resetData } from './helpers';
 
 beforeEach(resetData);
@@ -80,33 +80,58 @@ describe('doğrulama', () => {
 		expect(await db.select().from(appointments)).toHaveLength(0);
 	});
 
-	it('başka işletmenin hizmeti / hizmeti yapmayan kaynak invalid', async () => {
-		const a = await createFixture(1);
-		expect(
-			await book(
-				db,
-				{
-					businessId: a.business.id + 99,
-					serviceId: a.service.id,
-					resourceId: 'any',
-					start: SLOT_10,
-					...customer
-				},
-				NOW
-			)
-		).toMatchObject({ ok: false, reason: 'invalid' });
-		expect(
-			await book(
-				db,
-				{
-					businessId: a.business.id,
-					serviceId: a.service.id,
-					resourceId: 9999,
-					start: SLOT_10,
-					...customer
-				},
-				NOW
-			)
-		).toMatchObject({ ok: false, reason: 'invalid' });
+	it('başka işletmenin hizmeti kullanılamaz (gerçek ikinci işletme)', async () => {
+		const a = await createFixture(1, { slug: 'salon-a' });
+		const b = await createFixture(1, { slug: 'salon-b' });
+		// B'nin personeli A'nın hizmetini de yapıyor gibi bağla: yalnız businessId filtresi engellemeli
+		await db
+			.insert(resourceServices)
+			.values({ resourceId: b.resources[0].id, serviceId: a.service.id });
+
+		const r = await book(
+			db,
+			{
+				businessId: b.business.id,
+				serviceId: a.service.id,
+				resourceId: 'any',
+				start: SLOT_10,
+				...customer
+			},
+			NOW
+		);
+		expect(r).toEqual({ ok: false, reason: 'invalid' });
+		expect(await db.select().from(appointments)).toHaveLength(0);
+
+		// Kendi işletmesinde aynı istek başarılı (test hollow değil)
+		const own = await book(
+			db,
+			{
+				businessId: a.business.id,
+				serviceId: a.service.id,
+				resourceId: 'any',
+				start: SLOT_10,
+				...customer
+			},
+			NOW
+		);
+		expect(own.ok).toBe(true);
+	});
+
+	it('başka işletmenin kaynağı seçilemez', async () => {
+		const a = await createFixture(1, { slug: 'salon-a' });
+		const b = await createFixture(1, { slug: 'salon-b' });
+		const r = await book(
+			db,
+			{
+				businessId: a.business.id,
+				serviceId: a.service.id,
+				resourceId: b.resources[0].id,
+				start: SLOT_10,
+				...customer
+			},
+			NOW
+		);
+		expect(r).toEqual({ ok: false, reason: 'invalid' });
+		expect(await db.select().from(appointments)).toHaveLength(0);
 	});
 });

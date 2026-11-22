@@ -25,14 +25,33 @@ export const SLOT_1015 = new Date('2026-11-23T07:15:00Z');
 export const SLOT_1030 = new Date('2026-11-23T07:30:00Z');
 
 /** 1 işletme, 1 hizmet (30 dk), `resourceCount` personel; hepsi her gün 09:00-18:00 çalışır. */
-export async function createFixture(resourceCount = 1) {
+export type FixtureOpts = {
+	slug?: string;
+	bufferMin?: number;
+	/** Çalışma saati (varsayılan 09:00-18:00) */
+	hours?: { start: string; end: string };
+};
+
+export async function createFixture(resourceCount = 1, opts: FixtureOpts = {}) {
+	const hours = opts.hours ?? { start: '09:00', end: '18:00' };
 	const [business] = await db
 		.insert(businesses)
-		.values({ slug: 'test-salon', name: 'Test Salon', vertical: 'kuafor', slotStepMin: 15 })
+		.values({
+			slug: opts.slug ?? 'test-salon',
+			name: 'Test Salon',
+			vertical: 'kuafor',
+			slotStepMin: 15
+		})
 		.returning();
 	const [service] = await db
 		.insert(services)
-		.values({ businessId: business.id, name: 'Kesim', durationMin: 30, priceKurus: 25000 })
+		.values({
+			businessId: business.id,
+			name: 'Kesim',
+			durationMin: 30,
+			priceKurus: 25000,
+			bufferMin: opts.bufferMin ?? 0
+		})
 		.returning();
 	const rs = [];
 	for (let i = 0; i < resourceCount; i++) {
@@ -44,7 +63,7 @@ export async function createFixture(resourceCount = 1) {
 		for (let weekday = 0; weekday < 7; weekday++) {
 			await db
 				.insert(workingHours)
-				.values({ resourceId: r.id, weekday, startTime: '09:00', endTime: '18:00' });
+				.values({ resourceId: r.id, weekday, startTime: hours.start, endTime: hours.end });
 		}
 		rs.push(r);
 	}
