@@ -8,7 +8,7 @@ export type IcsEvent = {
 	/** Hatırlatma: etkinlikten kaç dakika önce (varsayılan 120 = 2 saat) */
 	alarmMinutes?: number;
 	/** Randevu durumu → STATUS (cancelled/pending/confirmed) */
-	status?: 'pending' | 'confirmed' | 'cancelled' | string;
+	status?: string;
 	/** DTSTAMP için (testte sabitlenir) */
 	now?: Date;
 };
@@ -25,6 +25,10 @@ const escapeText = (s: string) =>
 /** UID: gizli manage_token'dan bağımsız, tahmin edilse de yetki vermeyen kimlik. */
 export const appointmentUid = (businessId: number, appointmentId: number) =>
 	`appt-${businessId}-${appointmentId}@randevu-sistemi`;
+
+/** Satır sonu dahil kontrol karakterlerini atar (özellik enjeksiyonu). */
+const stripControl = (s: string) =>
+	[...s].filter((c) => c.charCodeAt(0) > 0x1f && c.charCodeAt(0) !== 0x7f).join('');
 
 const STATUS: Record<string, string> = {
 	cancelled: 'CANCELLED',
@@ -63,7 +67,7 @@ export function buildIcs(e: IcsEvent): string {
 		'CALSCALE:GREGORIAN',
 		'METHOD:PUBLISH',
 		'BEGIN:VEVENT',
-		`UID:${e.uid.replace(/[\x00-\x1f\x7f]/g, '')}`,
+		`UID:${stripControl(e.uid)}`,
 		`DTSTAMP:${utc(e.now ?? new Date())}`,
 		`DTSTART:${utc(e.start)}`,
 		`DTEND:${utc(e.end)}`,
