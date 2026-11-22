@@ -30,7 +30,10 @@ export const businesses = pgTable(
 		phone: text(),
 		settings: jsonb().$type<Record<string, unknown>>().notNull().default({})
 	},
-	(t) => [check('businesses_slot_step_pos', sql`${t.slotStepMin} > 0`)]
+	(t) => [
+		check('businesses_slot_step_pos', sql`${t.slotStepMin} > 0`),
+		check('businesses_phone_digits', sql`${t.phone} IS NULL OR ${t.phone} ~ '^[1-9][0-9]{9,14}$'`)
+	]
 );
 
 export const admins = pgTable('admins', {

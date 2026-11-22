@@ -14,6 +14,14 @@ import {
 	workingHours
 } from '../src/lib/server/db/schema';
 import { getVertical, type VerticalConfig } from '../src/lib/verticals';
+import { businessPhoneDigits } from '../src/lib/whatsapp';
+
+/** Yazma anı doğrulaması: wa.me için yalnız rakam; geçersiz şablon telefonu seed'i durdurur. */
+function businessPhone(phone: string): string {
+	const d = businessPhoneDigits(phone);
+	if (!d) throw new Error(`Geçersiz işletme telefonu (TR cep numarası bekleniyor): ${phone}`);
+	return d;
+}
 
 /** Sektör şablonundaki demo veriyi kurar; aynı slug varsa önce silip yeniden yazar (idempotent). */
 export async function seedVertical(
@@ -34,7 +42,7 @@ export async function seedVertical(
 				name: s.business.name,
 				vertical: v.id,
 				slotStepMin: v.slotStepMin,
-				phone: s.business.phone,
+				phone: businessPhone(s.business.phone),
 				settings: { address: s.business.address }
 			})
 			.returning();

@@ -27,6 +27,25 @@ describe('CHECK kısıtları (#7)', () => {
 		).toBe(CHECK_VIOLATION);
 	});
 
+	it.each(['@kotu.ornek/', '+90 555 123 45 67', '12345'])(
+		'işletme telefonu rakam dışı/kısa (%s) reddedilir; wa.me yalnız rakamdan kurulur',
+		async (phone) => {
+			expect(
+				await code(
+					db.insert(businesses).values({ slug: 'p', name: 'P', vertical: 'kuafor', phone })
+				)
+			).toBe(CHECK_VIOLATION);
+		}
+	);
+
+	it('işletme telefonu: boş (null) ve rakamlı ülke kodlu numara kabul edilir', async () => {
+		await db.insert(businesses).values({ slug: 'p1', name: 'P', vertical: 'kuafor' });
+		await db
+			.insert(businesses)
+			.values({ slug: 'p2', name: 'P', vertical: 'kuafor', phone: '905551234567' });
+		expect(await db.select().from(businesses)).toHaveLength(2);
+	});
+
 	it('buffer_min < 0 reddedilir', async () => {
 		const f = await createFixture(1);
 		expect(

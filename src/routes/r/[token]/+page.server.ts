@@ -3,6 +3,7 @@ import { cancelByToken, getManageView } from '#lib/server/booking/manage.ts';
 import { db } from '#lib/server/db/index.ts';
 import { statusView } from '#lib/status.ts';
 import { formatDayLong, formatPrice, formatTime, localDate } from '#lib/time.ts';
+import { waLink } from '#lib/whatsapp.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, setHeaders }) => {
@@ -26,9 +27,7 @@ export const load: PageServerLoad = async ({ params, setHeaders }) => {
 		},
 		canCancel: v.canCancel,
 		cancelWindowHours: v.cancelWindowHours,
-		whatsappUrl: v.businessPhone
-			? `https://wa.me/${v.businessPhone}?text=${encodeURIComponent(whatsappText)}`
-			: null
+		whatsappUrl: waLink(v.businessPhone, whatsappText)
 	};
 };
 
