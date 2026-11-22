@@ -7,7 +7,7 @@ import {
 	getBusinessBySlug
 } from '#lib/server/booking/catalog.ts';
 import { db } from '#lib/server/db/index.ts';
-import { bookingLimiter } from '#lib/server/limiters.ts';
+import { BOOKING_LIMIT, bookingKey, rateLimiter } from '#lib/server/limiters.ts';
 import { addDays, formatDayLong, formatWeekdayShort, localDate, slotOption } from '#lib/time.ts';
 import { bookingSchema, formStrings } from '#lib/validation.ts';
 import { getVertical } from '#lib/verticals/index.ts';
@@ -114,8 +114,8 @@ export const actions: Actions = {
 	book: async ({ request, params, getClientAddress }) => {
 		const form = formStrings(await request.formData());
 		const values = { ad: form.ad ?? '', telefon: form.telefon ?? '' };
-		// IP hız sınırı (bellek içi, bkz. rate-limit.ts); geçersiz denemeler de sayılır
-		if (!bookingLimiter.consume(getClientAddress())) {
+		// IP hız sınırı (Postgres sayacı, bkz. rate-limit.ts); geçersiz denemeler de sayılır
+		if (!(await rateLimiter.hit(bookingKey(getClientAddress()), BOOKING_LIMIT))) {
 			return fail(429, {
 				errors: noErrors,
 				values,

@@ -13,7 +13,7 @@ export const { db, close } = createDb(TEST_DATABASE_URL);
 
 export async function resetData() {
 	await db.execute(
-		sql`TRUNCATE businesses, admins, sessions, services, resources, resource_services, working_hours, time_off, appointments RESTART IDENTITY CASCADE`
+		sql`TRUNCATE businesses, admins, sessions, rate_limits, services, resources, resource_services, working_hours, time_off, appointments RESTART IDENTITY CASCADE`
 	);
 }
 

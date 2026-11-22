@@ -10,7 +10,6 @@ import { NOW, SLOT_10, close, createFixture, db, resetData } from './helpers';
 vi.mock('#lib/server/db/index.ts', async () => ({ db: (await import('./helpers')).db }));
 
 const { handle } = await import('../../src/hooks.server');
-const { bookingLimiter, loginLimiter } = await import('../../src/lib/server/limiters');
 const login = await import('../../src/routes/admin/giris/+page.server');
 const bookingPage = await import('../../src/routes/[slug]/+page.server');
 const detail = await import('../../src/routes/admin/(panel)/randevu/[id]/+page.server');
@@ -18,8 +17,6 @@ const manage = await import('../../src/routes/r/[token]/+page.server');
 
 beforeEach(async () => {
 	await resetData();
-	bookingLimiter.clear();
-	loginLimiter.clear();
 });
 afterEach(() => vi.useRealTimers());
 afterAll(close);
@@ -148,11 +145,20 @@ describe('giriş eylemi', () => {
 		expect(cookies.jar.size).toBe(0);
 	});
 
-	it('hız sınırı: 5 başarısız denemeden sonra doğru şifre bile 429; başka IP etkilenmez', async () => {
+	it('hız sınırı: 5 başarısız denemeden sonra doğru şifre bile 429; başka e-posta/IP etkilenmez', async () => {
 		await seedAdmin();
 		for (let i = 0; i < 5; i++) await attempt('yanlis');
 		await expect(attempt('dogru-sifre-1')).resolves.toMatchObject({ status: 429 });
-		await expect(attempt('dogru-sifre-1', '2.2.2.2')).rejects.toMatchObject({ status: 303 });
+		// başka IP'den aynı hesap da kilitli (e-posta anahtarı); başka e-posta serbest
+		await expect(attempt('dogru-sifre-1', '2.2.2.2')).resolves.toMatchObject({ status: 429 });
+		await expect(
+			call(login.actions.default, {
+				request: form({ email: 'baska@ornek.test', password: 'x' }),
+				cookies: fakeCookies(),
+				getClientAddress: () => '2.2.2.2',
+				url: new URL('http://x.test/admin/giris')
+			})
+		).resolves.toMatchObject({ status: 400 });
 	});
 
 	it('başarılı giriş sayacı sıfırlar', async () => {
@@ -161,6 +167,70 @@ describe('giriş eylemi', () => {
 		await expect(attempt('dogru-sifre-1')).rejects.toMatchObject({ status: 303 });
 		for (let i = 0; i < 4; i++) await attempt('yanlis');
 		await expect(attempt('yanlis')).resolves.toMatchObject({ status: 400 });
+	});
+});
+
+describe('giriş hız sınırı: eşzamanlılık, e-posta anahtarı, IP sayacı', () => {
+	async function seedAdmin() {
+		const { business } = await createFixture(1);
+		return createAdmin(db, {
+			businessId: business.id,
+			email: 'sahip@ornek.test',
+			password: 'dogru-sifre-1'
+		});
+	}
+	/** HTTP durumu: başarılı giriş (303 yönlendirme) da bir durumdur. */
+	const status = async (email: string, password: string, ip: string) => {
+		try {
+			const r = (await call(login.actions.default, {
+				request: form({ email, password }),
+				cookies: fakeCookies(),
+				getClientAddress: () => ip,
+				url: new URL('http://x.test/admin/giris')
+			})) as { status: number };
+			return r.status;
+		} catch (e) {
+			return (e as { status: number }).status;
+		}
+	};
+
+	it('50 paralel yanlış deneme: yalnız ilk 5 doğrulamaya girer, kalanı 429 (yarış yok)', async () => {
+		await seedAdmin();
+		const codes = await Promise.all(
+			Array.from({ length: 50 }, () => status('sahip@ornek.test', 'yanlis', '3.3.3.3'))
+		);
+		expect(codes.filter((c) => c === 400)).toHaveLength(5);
+		expect(codes.filter((c) => c === 429)).toHaveLength(45);
+	});
+
+	it('e-posta başına sınır: farklı IP’lerden gelen denemeler de hedef hesabı kilitler', async () => {
+		await seedAdmin();
+		for (let i = 0; i < 5; i++)
+			expect(await status('sahip@ornek.test', 'yanlis', `10.0.0.${i}`)).toBe(400);
+		// yeni bir IP, doğru şifre: hesap kilitli
+		expect(await status('sahip@ornek.test', 'dogru-sifre-1', '10.0.0.99')).toBe(429);
+		// büyük/küçük harf ve boşluk aynı hesaptır
+		expect(await status(' SAHIP@ornek.test ', 'yanlis', '10.0.0.98')).toBe(429);
+	});
+
+	it('başarılı giriş yalnız o e-postanın sayacını sıfırlar; IP sayacı sıfırlanmaz', async () => {
+		await seedAdmin();
+		// saldırgan: her turda başka bir hedefe 4 yanlış + kendi hesabıyla 1 başarılı giriş, hep aynı IP
+		let blocked = false;
+		for (let round = 0; round < 6 && !blocked; round++) {
+			for (let i = 0; i < 4; i++)
+				if ((await status(`hedef${round}@ornek.test`, 'x', '4.4.4.4')) === 429) blocked = true;
+			if ((await status('sahip@ornek.test', 'dogru-sifre-1', '4.4.4.4')) === 429) blocked = true;
+		}
+		expect(blocked).toBe(true);
+	});
+
+	it('başarılı giriş kendi e-postasının sayacını sıfırlar', async () => {
+		await seedAdmin();
+		for (let i = 0; i < 4; i++) await status('sahip@ornek.test', 'yanlis', '5.5.5.5');
+		expect(await status('sahip@ornek.test', 'dogru-sifre-1', '5.5.5.5')).toBe(303);
+		for (let i = 0; i < 4; i++)
+			expect(await status('sahip@ornek.test', 'yanlis', '5.5.5.5')).toBe(400);
 	});
 });
 

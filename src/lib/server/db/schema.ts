@@ -153,3 +153,18 @@ export const appointments = pgTable(
 		index('appointments_business_idx').on(t.businessId, t.resourceId)
 	]
 );
+
+/**
+ * Hız sınırı sayaçları (sabit pencere). Anahtar: "<kapsam>:<ip|e-posta>". Her örnek aynı satırı
+ * paylaşır; artırma tek bir upsert deyimidir (bkz. rate-limit.ts). Süresi dolan satırlar fırsat
+ * düştükçe silinir.
+ */
+export const rateLimits = pgTable(
+	'rate_limits',
+	{
+		key: text().primaryKey(),
+		count: integer().notNull(),
+		expiresAt: timestamp('expires_at', { withTimezone: true }).notNull()
+	},
+	(t) => [index('rate_limits_expires_idx').on(t.expiresAt)]
+);

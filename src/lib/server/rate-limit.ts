@@ -1,56 +1,50 @@
+import { eq, lt, sql } from 'drizzle-orm';
+import type { Db } from './db/client';
+import { rateLimits } from './db/schema';
+
 /**
- * Bellek içi kayan pencere hız sınırı.
+ * Postgres tabanlı sabit pencere hız sınırı. Durum veritabanındadır: Vercel gibi serverless
+ * ortamda tüm örnekler aynı sayacı görür, soğuk başlangıç sıfırlamaz. Saat olarak veritabanının
+ * `now()` değeri kullanılır (örnekler arası saat farkı yok).
  *
- * Sınır (bilinçli): durum süreç belleğindedir. Vercel/serverless'ta her örnek kendi sayacını tutar ve
- * soğuk başlangıçta sıfırlanır; yani sınır "örnek başına"dır, küresel değil. Demo ve kötüye
- * kullanımı yavaşlatmak için yeterlidir; gerçek üretimde Redis/Upstash ya da Postgres sayacı gerekir.
+ * `hit` tek bir `INSERT … ON CONFLICT DO UPDATE … RETURNING` deyimidir: satır kilidi sayesinde
+ * paralel istekler birbirini sırayla görür, "önce oku sonra yaz" yarışı olmaz.
+ * Reddedilen istekler de sayılır ama pencereyi uzatmaz (süre ilk istekte sabitlenir).
  */
+export type Limit = { max: number; windowMs: number };
+
 export type RateLimiter = {
-	/** İsteği sayar; limit aşılmışsa false (reddedilen istek sayılmaz). */
-	consume(key: string, now?: number): boolean;
-	/** Saymadan: limit dolu mu? */
-	blocked(key: string, now?: number): boolean;
-	/** Bir olayı sayar (ör. başarısız giriş). */
-	record(key: string, now?: number): void;
-	reset(key: string): void;
-	clear(): void;
-	size(): number;
+	/** İsteği sayar; limit içindeyse true. `now` yalnız testler için (varsayılan: DB saati). */
+	hit(key: string, limit: Limit, now?: Date): Promise<boolean>;
+	reset(key: string): Promise<void>;
 };
 
-export function createRateLimiter(opts: {
-	max: number;
-	windowMs: number;
-	/** Bellek üst sınırı: aşılırsa en eski anahtarlar atılır */
-	maxKeys?: number;
-}): RateLimiter {
-	const { max, windowMs, maxKeys = 10_000 } = opts;
-	const hits = new Map<string, number[]>();
+/** Süresi dolmuş satırların temizliği: her ~50 çağrıdan birinde. */
+const PURGE_EVERY = 50;
 
-	function live(key: string, now: number): number[] {
-		const list = (hits.get(key) ?? []).filter((t) => t > now - windowMs);
-		if (list.length === 0) hits.delete(key);
-		else hits.set(key, list);
-		return list;
-	}
-
-	function add(key: string, now: number) {
-		const list = live(key, now);
-		list.push(now);
-		hits.delete(key); // Map ekleme sırası = en eskiden yeniye
-		hits.set(key, list);
-		while (hits.size > maxKeys) hits.delete(hits.keys().next().value!);
-	}
-
+export function createRateLimiter(db: Db): RateLimiter {
+	let calls = 0;
 	return {
-		consume(key, now = Date.now()) {
-			if (live(key, now).length >= max) return false;
-			add(key, now);
-			return true;
+		async hit(key, { max, windowMs }, now) {
+			const at = now ? sql`${now.toISOString()}::timestamptz` : sql`now()`;
+			const ms = sql`(${windowMs} * interval '1 millisecond')`;
+			const [row] = await db
+				.insert(rateLimits)
+				.values({ key, count: 1, expiresAt: sql`${at} + ${ms}` })
+				.onConflictDoUpdate({
+					target: rateLimits.key,
+					set: {
+						count: sql`CASE WHEN ${rateLimits.expiresAt} <= ${at} THEN 1 ELSE ${rateLimits.count} + 1 END`,
+						expiresAt: sql`CASE WHEN ${rateLimits.expiresAt} <= ${at} THEN ${at} + ${ms} ELSE ${rateLimits.expiresAt} END`
+					}
+				})
+				.returning({ count: rateLimits.count });
+			if (++calls % PURGE_EVERY === 0)
+				await db.delete(rateLimits).where(lt(rateLimits.expiresAt, at));
+			return row.count <= max;
 		},
-		blocked: (key, now = Date.now()) => live(key, now).length >= max,
-		record: (key, now = Date.now()) => add(key, now),
-		reset: (key) => void hits.delete(key),
-		clear: () => hits.clear(),
-		size: () => hits.size
+		async reset(key) {
+			await db.delete(rateLimits).where(eq(rateLimits.key, key));
+		}
 	};
 }

@@ -2,11 +2,17 @@ import { eq } from 'drizzle-orm';
 import { fail, redirect } from '@sveltejs/kit';
 import { loginSchema } from '#lib/admin-validation.ts';
 import { DEMO_ADMIN } from '#lib/demo.ts';
-import { authenticate } from '#lib/server/auth/password.ts';
+import { authenticate, normalizeEmail } from '#lib/server/auth/password.ts';
 import { SESSION_COOKIE, createSession } from '#lib/server/auth/session.ts';
 import { db } from '#lib/server/db/index.ts';
 import { admins } from '#lib/server/db/schema.ts';
-import { loginLimiter } from '#lib/server/limiters.ts';
+import {
+	LOGIN_EMAIL_LIMIT,
+	LOGIN_IP_LIMIT,
+	loginEmailKey,
+	loginIpKey,
+	rateLimiter
+} from '#lib/server/limiters.ts';
 import { formStrings } from '#lib/validation.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -27,21 +33,24 @@ export const actions: Actions = {
 		const ip = getClientAddress();
 		const fields = formStrings(await request.formData());
 		const email = fields.email ?? '';
-		if (loginLimiter.blocked(ip)) {
+		const parsed = loginSchema.safeParse(fields);
+		// Sayaçlar doğrulamadan ÖNCE ve atomik artar: paralel istekler 5/20 sınırını aşıp Argon2'ye giremez
+		const emailKey = parsed.success ? loginEmailKey(normalizeEmail(parsed.data.email)) : null;
+		const allowed =
+			(await rateLimiter.hit(loginIpKey(ip), LOGIN_IP_LIMIT)) &&
+			(!emailKey || (await rateLimiter.hit(emailKey, LOGIN_EMAIL_LIMIT)));
+		if (!allowed) {
 			return fail(429, {
 				email,
-				message: 'Çok fazla başarısız deneme. Lütfen 15 dakika sonra tekrar deneyin.'
+				message: 'Çok fazla deneme. Lütfen 15 dakika sonra tekrar deneyin.'
 			});
 		}
-		const parsed = loginSchema.safeParse(fields);
 		const admin = parsed.success
 			? await authenticate(db, parsed.data.email, parsed.data.password)
 			: null;
-		if (!admin) {
-			loginLimiter.record(ip);
-			return fail(400, { email, message: 'E-posta veya şifre hatalı.' });
-		}
-		loginLimiter.reset(ip);
+		if (!admin) return fail(400, { email, message: 'E-posta veya şifre hatalı.' });
+		// Yalnız bu e-postanın sayacı; IP sayacına dokunulmaz
+		if (emailKey) await rateLimiter.reset(emailKey);
 
 		const { token, expiresAt } = await createSession(db, admin.id);
 		cookies.set(SESSION_COOKIE, token, {
