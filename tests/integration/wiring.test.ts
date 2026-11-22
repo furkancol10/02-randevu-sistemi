@@ -2,7 +2,12 @@ import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { appointments, businesses } from '../../src/lib/server/db/schema';
 import { createAdmin } from '../../src/lib/server/auth/password';
-import { SESSION_COOKIE, SESSION_TTL_MS, createSession } from '../../src/lib/server/auth/session';
+import {
+	SESSION_COOKIE,
+	SESSION_TTL_MS,
+	createSession,
+	validateSession
+} from '../../src/lib/server/auth/session';
 import { book } from '../../src/lib/server/booking/book';
 import { NOW, SLOT_10, close, createFixture, db, resetData } from './helpers';
 
@@ -139,6 +144,19 @@ describe('giriş eylemi', () => {
 		const c = cookies.jar.get(SESSION_COOKIE)!;
 		expect(c.value.length).toBeGreaterThan(30);
 		expect(c.opts).toMatchObject({ httpOnly: true, sameSite: 'lax', secure: true, path: '/' });
+	});
+
+	it('yeniden girişte önceki oturum çerezinin DB kaydı silinir (eski token geçersiz)', async () => {
+		const admin = await seedAdmin();
+		const { token: old } = await createSession(db, admin.id);
+		const cookies = fakeCookies({ [SESSION_COOKIE]: old });
+		await expect(attempt('dogru-sifre-1', '1.1.1.1', cookies)).rejects.toMatchObject({
+			status: 303
+		});
+		const fresh = cookies.jar.get(SESSION_COOKIE)!.value;
+		expect(fresh).not.toBe(old);
+		expect(await validateSession(db, old)).toBeNull();
+		expect(await validateSession(db, fresh)).not.toBeNull();
 	});
 
 	it('yanlış şifre → 400, çerez yok', async () => {

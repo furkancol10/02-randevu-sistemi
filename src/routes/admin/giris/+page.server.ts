@@ -3,7 +3,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { loginSchema } from '#lib/admin-validation.ts';
 import { DEMO_ADMIN } from '#lib/demo.ts';
 import { authenticate, normalizeEmail } from '#lib/server/auth/password.ts';
-import { SESSION_COOKIE, createSession } from '#lib/server/auth/session.ts';
+import { SESSION_COOKIE, createSession, deleteSession } from '#lib/server/auth/session.ts';
 import { db } from '#lib/server/db/index.ts';
 import { admins } from '#lib/server/db/schema.ts';
 import {
@@ -52,6 +52,9 @@ export const actions: Actions = {
 		// Yalnız bu e-postanın sayacı; IP sayacına dokunulmaz
 		if (emailKey) await rateLimiter.reset(emailKey);
 
+		// Çıkış yapmadan yeniden giriş: önceki oturum DB'de de kapanır
+		const previous = cookies.get(SESSION_COOKIE);
+		if (previous) await deleteSession(db, previous);
 		const { token, expiresAt } = await createSession(db, admin.id);
 		cookies.set(SESSION_COOKIE, token, {
 			path: '/',
