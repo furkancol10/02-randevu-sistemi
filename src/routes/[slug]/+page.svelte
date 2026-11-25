@@ -79,10 +79,12 @@
 			</ul>
 		{:else}
 			<a
-				href={qs({ hizmet: data.service.id })}
+				href={data.step === 'details'
+					? qs({ hizmet: data.service.id, personel: data.personel, gun: data.gun })
+					: qs({ hizmet: data.service.id })}
 				class="inline-flex min-h-11 items-center text-sm text-(--accent) underline"
 			>
-				← {data.service.name} · {data.staffName}
+				← {data.step === 'details' ? 'Gün ve saat' : `${data.service.name} · ${data.staffName}`}
 			</a>
 
 			{#if data.step === 'time'}
